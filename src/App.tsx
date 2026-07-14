@@ -87,9 +87,6 @@ function App() {
             Result type: <Calligraph>{typeToString(result.root.type)}</Calligraph>
           </div>
 
-          {/* ponytail: placeholder only, interactive canvas rendering not implemented yet */}
-          <canvas className="derivation-canvas" />
-
           <div className="latex-panel">
             <div className="proof-tree-scroll">
               <ProofTree root={result.root} />

@@ -50,10 +50,28 @@
   margin-left: 0.4em;
   font-size: 0.7rem;
   white-space: nowrap;
+  font-variant-caps: small-caps;
 }
 
 .judgment {
   white-space: nowrap;
   padding: 0 0.3rem;
   font-size: 0.85rem;
+}
+
+.env-badge {
+  display: inline-block;
+  color: var(--env-color);
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  padding: 0 0.3em;
+  background: transparent;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.env-badge.active {
+  border-color: var(--env-color);
+  background: color-mix(in srgb, var(--env-color) 15%, transparent);
 }
