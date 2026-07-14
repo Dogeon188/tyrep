@@ -61,6 +61,16 @@
   opacity: 0.7;
 }
 
+.preset-select {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--gray-2);
+  color: var(--muted);
+}
+
 .primitives-toggle[aria-pressed='true'] {
   background: var(--fg);
   color: var(--bg);

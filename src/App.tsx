@@ -14,6 +14,13 @@ const EXAMPLE = {
   term: 'λx. λy:b. x y y',
 }
 
+const PRESETS = [
+  { name: 'Identity', ctx: '', term: 'λx:b. x', primitives: false },
+  { name: 'Const', ctx: '', term: 'λx:b. λy:b. x', primitives: false },
+  { name: 'Higher-Order', ctx: 'x : b -> b -> b', term: 'λx. λy:b. x y y', primitives: false },
+  { name: 'Bool/Int Primitives', ctx: '', term: 'eq (add1 1) (add1 (add1 0))', primitives: true },
+]
+
 function App() {
   const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
   const [termSrc, setTermSrc] = useState(EXAMPLE.term)
@@ -45,6 +52,31 @@ function App() {
   return (
     <>
       <div className="inputs">
+        <label>
+          <span className="input-label">
+            Preset
+            <select
+              className="preset-select"
+              value=""
+              onChange={(e) => {
+                const preset = PRESETS[Number(e.target.value)]
+                if (!preset) return
+                setCtxSrc(preset.ctx)
+                setTermSrc(preset.term)
+                setPrimitives(preset.primitives)
+              }}
+            >
+              <option value="" disabled>
+                choose...
+              </option>
+              {PRESETS.map((p, i) => (
+                <option key={p.name} value={i}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        </label>
         <label>
           <span className="input-label">Context (Γ)</span>
           <div className="input-row">
