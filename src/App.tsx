@@ -41,13 +41,21 @@ function App() {
         <label>
           Context (Γ)
           <textarea rows={3} value={ctxSrc} onChange={(e) => setCtxSrc(e.target.value)} />
-          <div className="syntax-hint">one binding per line/comma: x : T</div>
+          <div className="syntax-hint">
+            one binding per line/comma: x : T
+            <br/>
+            types: base name | T -&gt; T (right-assoc) | (T)
+          </div>
         </label>
         <label>
           Expression (annotate lambdas: λx:T. e)
           <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
           <div className="syntax-hint">
-            lambda: λx.e | \x.e | fn x =&gt; e — application: f x — arrow type: T -&gt; T
+            lambda: λx.e | \x.e | fn x =&gt; e
+            <br/>
+            application: f x
+            <br/>
+            arrow type: T -&gt; T
           </div>
           {fullForm && <div className="full-form">{fullForm}</div>}
         </label>

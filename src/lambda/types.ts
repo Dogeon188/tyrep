@@ -29,6 +29,21 @@ export function termToString(t: Term): string {
   }
 }
 
+// Fully parenthesized form, e.g. `λx. { λy. { (x y) y } }`
+export function termToFullString(t: Term): string {
+  switch (t.kind) {
+    case 'var':
+      return t.name
+    case 'abs':
+      return `λ${t.param}${t.paramType ? `:${typeToString(t.paramType)}` : ''}. { ${termToFullString(t.body)} }`
+    case 'app': {
+      const fn = t.fn.kind === 'var' ? termToFullString(t.fn) : `(${termToFullString(t.fn)})`
+      const arg = t.arg.kind === 'var' ? termToFullString(t.arg) : `(${termToFullString(t.arg)})`
+      return `${fn} ${arg}`
+    }
+  }
+}
+
 export function ctxToString(ctx: Ctx): string {
   if (ctx.length === 0) return '∅'
   return ctx.map(([n, t]) => `${n} : ${typeToString(t)}`).join(', ')

@@ -3,7 +3,7 @@ import type { Ctx, Term, Type } from './types'
 // ponytail: hand-rolled tokenizer/parser instead of a parser-combinator lib —
 // the grammar is tiny (vars, app, abs, arrow types) and this is ~60 lines.
 function tokenize(src: string): string[] {
-  const re = /->|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
+  const re = /->|=>|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
   return (src.match(re) ?? []).filter((t) => t !== '\n')
 }
 
@@ -61,9 +61,9 @@ export function parseTypeString(src: string): Type {
   return t
 }
 
-// Term := Abs | App ; Abs := ("\"|"λ") IDENT (":" Type)? "." Term ; App := Atom+ ; Atom := IDENT | "(" Term ")"
+// Term := Abs | App ; Abs := ("\"|"λ"|"fn") IDENT (":" Type)? ("."|"=>") Term ; App := Atom+ ; Atom := IDENT | "(" Term ")"
 function parseTerm(s: TokenStream): Term {
-  if (s.peek() === '\\' || s.peek() === 'λ') {
+  if (s.peek() === '\\' || s.peek() === 'λ' || s.peek() === 'fn') {
     s.next()
     const param = s.next()
     if (!isIdent(param)) throw new Error(`expected a parameter name, got "${param}"`)
@@ -72,7 +72,9 @@ function parseTerm(s: TokenStream): Term {
       s.next()
       paramType = parseType(s)
     }
-    s.expect('.')
+    // ponytail: accept either "." or "=>" regardless of opener, one less branch to maintain
+    if (s.peek() === '=>') s.next()
+    else s.expect('.')
     return { kind: 'abs', param, paramType, body: parseTerm(s) }
   }
   let term = parseTermAtom(s)
