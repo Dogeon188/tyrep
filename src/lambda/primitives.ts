@@ -14,7 +14,7 @@ const tyvar: Type = { kind: 'base', name: TYVAR }
 // eq is the one polymorphic entry — typecheck.ts substitutes TYVAR with the
 // concrete argument type on first application (see substType).
 export const BUILTIN_TYPES: Record<string, Type> = {
-  neg: { kind: 'arrow', from: bool, to: bool },
-  add1: { kind: 'arrow', from: int, to: int },
-  eq: { kind: 'arrow', from: tyvar, to: { kind: 'arrow', from: tyvar, to: bool } },
+    neg: { kind: 'arrow', from: bool, to: bool },
+    add1: { kind: 'arrow', from: int, to: int },
+    eq: { kind: 'arrow', from: tyvar, to: { kind: 'arrow', from: tyvar, to: bool } }
 }
