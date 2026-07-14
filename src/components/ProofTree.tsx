@@ -228,7 +228,7 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
     return (
       <div className={`rule collapsed${active ? ' active' : ''}`}>
         <span className="judgment collapse-toggle" onClick={() => toggleCollapse(n.term)}>
-          D{subscript(idx)} ⊢ {typeToString(n.type)}
+          D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} : {typeToString(n.type)}
         </span>
       </div>
     )
