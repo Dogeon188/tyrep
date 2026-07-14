@@ -6,6 +6,7 @@ import { derive } from './lambda/typecheck'
 import { proofToLatex } from './lambda/latex'
 import { ProofTree } from './components/ProofTree'
 import { TypeRulesModal } from './components/TypeRulesModal'
+import { LabeledTextarea } from './components/LabeledTextarea'
 import { typeToString, termToFullString } from './lambda/types'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
@@ -53,7 +54,7 @@ function App() {
   return (
     <>
       <div className="inputs">
-        <label>
+        <div className="preset-row">
           <span className="input-label">
             Preset
             <select
@@ -77,36 +78,38 @@ function App() {
               ))}
             </select>
           </span>
-        </label>
-        <label>
-          <span className="input-label">Context (Γ)</span>
-          <div className="input-row">
-            <textarea rows={3} value={ctxSrc} onChange={(e) => setCtxSrc(e.target.value)} />
-            <div className="syntax-hint">
+          <button
+            type="button"
+            className="primitives-toggle"
+            aria-pressed={primitives}
+            onClick={() => setPrimitives((v) => !v)}
+          >
+            BoolInt
+          </button>
+          <button type="button" className="primitives-toggle" onClick={() => rulesDialogRef.current?.showModal()}>
+            Type Rules
+          </button>
+        </div>
+        <LabeledTextarea
+          id="ctx-input"
+          label="Context (Γ₀)"
+          value={ctxSrc}
+          onChange={setCtxSrc}
+          hint={
+            <>
               <span>one binding per line/comma: <code>x : T</code></span>
               <br/>
               <span>types: <em>type-name</em> | <code>(T)</code> | <code>T -&gt; T</code> or <code>T → T</code> (right-assoc)</span>
-            </div>
-          </div>
-        </label>
-        <label>
-          <span className="input-label">
-            Expression
-            <button
-              type="button"
-              className="primitives-toggle"
-              aria-pressed={primitives}
-              onClick={() => setPrimitives((v) => !v)}
-            >
-              BoolInt
-            </button>
-            <button type="button" className="primitives-toggle" onClick={() => rulesDialogRef.current?.showModal()}>
-              Type Rules
-            </button>
-          </span>
-          <div className="input-row">
-            <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
-            <div className="syntax-hint">
+            </>
+          }
+        />
+        <LabeledTextarea
+          id="term-input"
+          label="Expression"
+          value={termSrc}
+          onChange={setTermSrc}
+          hint={
+            <>
               <span>lambda: <code>λx.e</code> or <code>\x.e</code> or <code>fn x =&gt; e</code></span>
               <br/>
               <span>annotated lambda: <code>λx:T. e</code></span>
@@ -124,14 +127,15 @@ function App() {
                   <span>primitives: <code>neg</code> | <code>add1</code> | <code>eq</code> — see Type Rules</span>
                 </>
               )}
-            </div>
-          </div>
+            </>
+          }
+        >
           {fullForm && (
             <div className="full-form">
               <Calligraph>{fullForm}</Calligraph>
             </div>
           )}
-        </label>
+        </LabeledTextarea>
       </div>
 
       {result.error && <div className="error">{result.error}</div>}
