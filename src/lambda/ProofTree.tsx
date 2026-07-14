@@ -138,8 +138,7 @@ function termNode(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLabel>):
       const label = extended !== ctx ? binderLabels.get(JSON.stringify(extended)) : undefined
       return (
         <>
-          λ{label ? <VarBadge name={term.param} label={label} /> : term.param}
-          {term.paramType ? `:${typeToString(term.paramType)}` : ''}. {termNode(term.body, extended, binderLabels)}
+          λ{label ? <VarBadge name={term.param} label={label} /> : term.param}. {termNode(term.body, extended, binderLabels)}
         </>
       )
     }

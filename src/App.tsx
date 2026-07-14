@@ -49,7 +49,7 @@ function App() {
             <div className="syntax-hint">
               <span>one binding per line/comma: <code>x : T</code></span>
               <br/>
-              <span>types: <code>basename</code> | <code>T -&gt; T</code> or <code>T → T</code> (right-assoc) | <code>(T)</code></span>
+              <span>types: <em>type-name</em> | <code>(T)</code> | <code>T -&gt; T</code> or <code>T → T</code> (right-assoc)</span>
             </div>
           </div>
         </label>
