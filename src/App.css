@@ -118,44 +118,6 @@
   opacity: 0.7;
 }
 
-.proof-tree {
-  display: inline-flex;
-}
-
-.rule {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.premises {
-  display: inline-flex;
-  gap: 1.5rem;
-  align-items: flex-end;
-}
-
-.line {
-  position: relative;
-  width: 100%;
-  border-top: 1px solid currentColor;
-  margin: 0.3rem 0;
-}
-
-.rule-name {
-  position: absolute;
-  left: 100%;
-  top: -0.6em;
-  margin-left: 0.4em;
-  font-size: 0.7rem;
-  white-space: nowrap;
-}
-
-.judgment {
-  white-space: nowrap;
-  padding: 0 0.3rem;
-  font-size: 0.85rem;
-}
-
 .latex-output {
   width: 100%;
   height: 200px;
