@@ -1,6 +1,13 @@
-import { BUILTIN_TYPES } from './primitives'
+import { BUILTIN_TYPES, TYVAR } from './primitives'
 import type { Ctx, Term, Type } from './types'
 import { typesEqual, typeToString } from './types'
+
+// Replaces eq's placeholder type-variable with the concrete type it was
+// applied to (only substitution this toy type system needs).
+function substType(t: Type, replacement: Type): Type {
+  if (t.kind === 'base') return t.name === TYVAR ? replacement : t
+  return { kind: 'arrow', from: substType(t.from, replacement), to: substType(t.to, replacement) }
+}
 
 export type ProofNode = {
   ctx: Ctx
@@ -38,12 +45,14 @@ export function derive(ctx: Ctx, term: Term): ProofNode {
         throw new TypeError2(`applying non-function of type ${typeToString(fnNode.type)}`)
       }
       const argNode = derive(ctx, term.arg)
-      if (!typesEqual(argNode.type, fnNode.type.from)) {
+      const isPoly = fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
+      if (!isPoly && !typesEqual(argNode.type, fnNode.type.from)) {
         throw new TypeError2(
           `argument has type ${typeToString(argNode.type)}, expected ${typeToString(fnNode.type.from)}`,
         )
       }
-      return { ctx, term, type: fnNode.type.to, rule: 'T-App', premises: [fnNode, argNode] }
+      const type = isPoly ? substType(fnNode.type.to, argNode.type) : fnNode.type.to
+      return { ctx, term, type, rule: 'T-App', premises: [fnNode, argNode] }
     }
     case 'abs': {
       // ponytail: fall back to a same-name Γ binding instead of forcing inline annotation everywhere

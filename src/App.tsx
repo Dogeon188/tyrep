@@ -88,6 +88,8 @@ function App() {
                   <span>T-Prim: <code>neg</code> : Bool → Bool</span>
                   <br/>
                   <span>T-Prim: <code>add1</code> : Int → Int</span>
+                  <br/>
+                  <span>T-Prim: <code>eq</code> : α → α → Bool (both sides must share a type)</span>
                 </>
               )}
             </div>

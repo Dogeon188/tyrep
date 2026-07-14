@@ -37,4 +37,15 @@ describe('derive', () => {
     const applied = derive([], parseTermString('add1 41', { primitives: true }))
     expect(applied.type).toEqual({ kind: 'base', name: 'Int' })
   })
+
+  test('eq accepts two same-typed operands and yields Bool', () => {
+    const intEq = derive([], parseTermString('eq 1 2', { primitives: true }))
+    expect(intEq.type).toEqual({ kind: 'base', name: 'Bool' })
+    const boolEq = derive([], parseTermString('eq true false', { primitives: true }))
+    expect(boolEq.type).toEqual({ kind: 'base', name: 'Bool' })
+  })
+
+  test('eq rejects operands of different types', () => {
+    expect(() => derive([], parseTermString('eq 1 true', { primitives: true }))).toThrow(TypeError2)
+  })
 })
