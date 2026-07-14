@@ -4,7 +4,8 @@ import { parseCtxString, parseTermString } from './lambda/parser'
 import { derive } from './lambda/typecheck'
 import { proofToLatex } from './lambda/latex'
 import { ProofTree } from './lambda/ProofTree'
-import { typeToString } from './lambda/types'
+import { typeToString, termToFullString } from './lambda/types'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 const EXAMPLE = {
   ctx: '',
@@ -26,16 +27,29 @@ function App() {
     }
   }, [ctxSrc, termSrc])
 
+  const fullForm = useMemo(() => {
+    try {
+      return termToFullString(parseTermString(termSrc))
+    } catch {
+      return null
+    }
+  }, [termSrc])
+
   return (
     <>
       <div className="inputs">
         <label>
           Context (Γ)
           <textarea rows={3} value={ctxSrc} onChange={(e) => setCtxSrc(e.target.value)} />
+          <div className="syntax-hint">one binding per line/comma: x : T</div>
         </label>
         <label>
           Expression (annotate lambdas: λx:T. e)
           <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
+          <div className="syntax-hint">
+            lambda: λx.e | \x.e | fn x =&gt; e — application: f x — arrow type: T -&gt; T
+          </div>
+          {fullForm && <div className="full-form">{fullForm}</div>}
         </label>
       </div>
 
@@ -48,6 +62,8 @@ function App() {
           <textarea className="latex-output" readOnly value={proofToLatex(result.root)} />
         </div>
       )}
+
+      <ThemeSwitcher />
     </>
   )
 }
