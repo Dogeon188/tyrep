@@ -48,7 +48,9 @@ export function derive(ctx: Ctx, term: Term): ProofNode {
           `cannot infer type of "${term.param}" — annotate it as "λ${term.param}:T. ..." or add "${term.param} : T" to Γ`,
         )
       }
-      const bodyCtx: Ctx = [...ctx, [term.param, paramType]]
+      // Reusing the same Γ binding (no explicit annotation) shouldn't duplicate
+      // it in the body's context — that just prints "x : T, x : T" in the legend.
+      const bodyCtx: Ctx = term.paramType ? [...ctx, [term.param, paramType]] : ctx
       const bodyNode = derive(bodyCtx, term.body)
       return {
         ctx,

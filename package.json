@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "cli": "bun run cli.ts"
+    "cli": "bun run cli.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "calligraph": "^1.4.1",
@@ -20,6 +21,7 @@
     "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/babel__core": "^7.20.5",
+    "@types/bun": "^1.3.14",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
