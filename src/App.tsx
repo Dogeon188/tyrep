@@ -71,6 +71,7 @@ function App() {
 
     return (
         <>
+            <h1 className="app-title">TyRep</h1>
             <div className="inputs">
                 <div className="preset-row">
                     <span className="input-label">

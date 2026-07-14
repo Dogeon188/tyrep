@@ -1,171 +1,176 @@
 #root {
-  max-width: 100%;
-  padding: 1.5rem;
-  font-family: ui-monospace, monospace;
+    max-width: 100%;
+    padding: 1.5rem;
+    font-family: ui-monospace, monospace;
+}
+
+.app-title {
+    font-size: 1.5rem;
+    margin: 0 0 1rem;
 }
 
 .inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .preset-row,
 .labeled-textarea {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  font-size: 0.75rem;
-  gap: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    font-size: 0.75rem;
+    gap: 0.25rem;
 }
 
 .preset-row {
-  flex-direction: row;
-  align-items: center;
+    flex-direction: row;
+    align-items: center;
 }
 
 .input-row {
-  display: flex;
-  align-items: stretch;
-  gap: 0.75rem;
-  width: 100%;
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: 100%;
 }
 
 .input-row textarea {
-  flex: 1;
+    flex: 1;
 }
 
 .inputs textarea,
 .inputs input {
-  font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.4rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.4rem;
 }
 
 .input-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .primitives-toggle {
-  font-family: inherit;
-  font-variant: small-caps;
-  font-size: 0.7rem;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
-  background: var(--gray-2);
-  color: var(--muted);
-  cursor: pointer;
-  transition: opacity 0.2s;
+    font-family: inherit;
+    font-variant: small-caps;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--gray-2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: opacity 0.2s;
 }
 
 .primitives-toggle:hover {
-  opacity: 0.7;
+    opacity: 0.7;
 }
 
 .preset-select {
-  font-family: inherit;
-  font-size: 0.7rem;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
-  background: var(--gray-2);
-  color: var(--muted);
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--gray-2);
+    color: var(--muted);
 }
 
 .primitives-toggle[aria-pressed='true'] {
-  background: var(--fg);
-  color: var(--bg);
+    background: var(--fg);
+    color: var(--bg);
 }
 
 .syntax-hint {
-  flex: 0 0 260px;
-  font-size: 0.7rem;
-  color: var(--muted);
-  text-align: left;
+    flex: 0 0 260px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: left;
 }
 
 .syntax-hint hr {
-  margin: 0.5rem 0;
-  border: none;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
 }
 
 .syntax-hint code {
-  font-family: inherit;
-  font-size: 0.7rem;
-  background: var(--gray-2);
-  padding: 0.1rem 0.3rem;
-  border-radius: var(--radius-small);
+    font-family: inherit;
+    font-size: 0.7rem;
+    background: var(--gray-2);
+    padding: 0.1rem 0.3rem;
+    border-radius: var(--radius-small);
 }
 
 .full-form {
-  font-size: 0.8rem;
-  color: #666;
-  white-space: pre-wrap;
-  word-break: break-word;
+    font-size: 0.8rem;
+    color: #666;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .error {
-  color: #c0392b;
-  white-space: pre-wrap;
-  margin-bottom: 1rem;
+    color: #c0392b;
+    white-space: pre-wrap;
+    margin-bottom: 1rem;
 }
 
 .output {
-  overflow-x: auto;
-  padding-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: 2rem;
 }
 
 .result-type {
-  font-weight: bold;
-  margin-bottom: 0.75rem;
+    font-weight: bold;
+    margin-bottom: 0.75rem;
 }
 
 .derivation-canvas {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  height: 240px;
-  margin-bottom: 1rem;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-small);
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    height: 240px;
+    margin-bottom: 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-small);
 }
 
 .proof-tree-scroll {
-  overflow-x: auto;
-  max-width: 100%;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .latex-panel-actions {
-  margin: 0.5rem 0;
+    margin: 0.5rem 0;
 }
 
 .latex-panel-actions button {
-  font-family: inherit;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
-  background: var(--gray-2);
-  color: var(--fg);
-  cursor: pointer;
-  transition: opacity 0.2s;
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--gray-2);
+    color: var(--fg);
+    cursor: pointer;
+    transition: opacity 0.2s;
 }
 
 .latex-panel-actions button:hover {
-  opacity: 0.7;
+    opacity: 0.7;
 }
 
 .latex-output {
-  width: 100%;
-  height: 200px;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  margin-top: 1rem;
+    width: 100%;
+    height: 200px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    margin-top: 1rem;
 }
