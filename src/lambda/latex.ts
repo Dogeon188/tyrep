@@ -13,7 +13,10 @@ function collectEnvs(n: ProofNode, envs: Map<string, Ctx>) {
 function termToString(t: Term): string {
   switch (t.kind) {
     case 'var':
+    case 'prim':
       return t.name
+    case 'lit':
+      return String(t.value)
     case 'abs':
       return `λ${t.param}. ${termToString(t.body)}`
     case 'app': {
@@ -47,6 +50,9 @@ function nodeToLatex(n: ProofNode, labels: Map<string, number>): string {
       labels,
     )}$`
     return `\\AxiomC{${hyp}}\n\\RightLabel{\\scriptsize \\textsc{T-Var}}\n\\UnaryInfC{${concl}}`
+  }
+  if (n.premises.length === 0) {
+    return `\\AxiomC{}\n\\RightLabel{\\scriptsize \\textsc{${n.rule}}}\n\\UnaryInfC{${concl}}`
   }
   const premiseLatex = n.premises.map((p) => nodeToLatex(p, labels)).join('\n')
   const infer = n.premises.length === 1 ? 'UnaryInfC' : 'BinaryInfC'

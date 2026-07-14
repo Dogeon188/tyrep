@@ -1,3 +1,4 @@
+import { BUILTIN_TYPES } from './primitives'
 import type { Ctx, Term, Type } from './types'
 import { typesEqual, typeToString } from './types'
 
@@ -5,7 +6,7 @@ export type ProofNode = {
   ctx: Ctx
   term: Term
   type: Type
-  rule: 'T-Var' | 'T-App' | 'T-Abs'
+  rule: 'T-Var' | 'T-App' | 'T-Abs' | 'T-Lit' | 'T-Prim'
   premises: ProofNode[]
 }
 
@@ -22,6 +23,10 @@ function lookup(ctx: Ctx, name: string): Type | undefined {
 /** Pure synthesis over T-Var/T-App/T-Abs: context + expression -> result type. */
 export function derive(ctx: Ctx, term: Term): ProofNode {
   switch (term.kind) {
+    case 'lit':
+      return { ctx, term, type: { kind: 'base', name: term.type }, rule: 'T-Lit', premises: [] }
+    case 'prim':
+      return { ctx, term, type: BUILTIN_TYPES[term.name], rule: 'T-Prim', premises: [] }
     case 'var': {
       const type = lookup(ctx, term.name)
       if (!type) throw new TypeError2(`unbound variable "${term.name}"`)

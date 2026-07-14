@@ -18,4 +18,23 @@ describe('derive', () => {
   test('unannotated param with no matching Γ binding is a type error', () => {
     expect(() => derive([], parseTermString('λx. x'))).toThrow(TypeError2)
   })
+
+  test('Int/Bool primitives type as base Int/Bool when enabled', () => {
+    const n = derive([], parseTermString('42', { primitives: true }))
+    expect(n.type).toEqual({ kind: 'base', name: 'Int' })
+    const b = derive([], parseTermString('true', { primitives: true }))
+    expect(b.type).toEqual({ kind: 'base', name: 'Bool' })
+  })
+
+  test('primitives stay plain identifiers when the toggle is off', () => {
+    expect(() => parseTermString('42')).toThrow()
+    expect(derive([['true', { kind: 'base', name: 'Bool' }]], parseTermString('true')).rule).toBe('T-Var')
+  })
+
+  test('neg and add1 are built-in primitive functions when enabled', () => {
+    const neg = derive([], parseTermString('neg', { primitives: true }))
+    expect(neg.type).toEqual({ kind: 'arrow', from: { kind: 'base', name: 'Bool' }, to: { kind: 'base', name: 'Bool' } })
+    const applied = derive([], parseTermString('add1 41', { primitives: true }))
+    expect(applied.type).toEqual({ kind: 'base', name: 'Int' })
+  })
 })

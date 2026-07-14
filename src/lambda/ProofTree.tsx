@@ -165,6 +165,10 @@ function termNodeInner(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLab
       const label = binderLabelAt(ctx, i, binderLabels)
       return label ? <VarBadge name={term.name} label={label} /> : term.name
     }
+    case 'lit':
+      return String(term.value)
+    case 'prim':
+      return term.name
     case 'abs': {
       const extended = paramCtxExtension(ctx, term)
       const label = extended !== ctx ? binderLabels.get(JSON.stringify(extended)) : undefined
@@ -178,7 +182,9 @@ function termNodeInner(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLab
       const fn =
         term.fn.kind === 'abs' ? <>({termNode(term.fn, ctx, binderLabels)})</> : termNode(term.fn, ctx, binderLabels)
       const arg =
-        term.arg.kind === 'var' ? termNode(term.arg, ctx, binderLabels) : <>({termNode(term.arg, ctx, binderLabels)})</>
+        term.arg.kind === 'var' || term.arg.kind === 'lit' || term.arg.kind === 'prim'
+          ? termNode(term.arg, ctx, binderLabels)
+          : <>({termNode(term.arg, ctx, binderLabels)})</>
       return (
         <>
           {fn} {arg}

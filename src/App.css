@@ -38,6 +38,34 @@
   padding: 0.4rem;
 }
 
+.input-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.primitives-toggle {
+  font-family: inherit;
+  font-variant: small-caps;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--gray-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.primitives-toggle:hover {
+  opacity: 0.7;
+}
+
+.primitives-toggle[aria-pressed='true'] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
 .syntax-hint {
   flex: 0 0 260px;
   font-size: 0.7rem;

@@ -16,25 +16,26 @@ const EXAMPLE = {
 function App() {
   const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
   const [termSrc, setTermSrc] = useState(EXAMPLE.term)
+  const [primitives, setPrimitives] = useState(false)
 
   const result = useMemo(() => {
     try {
       const ctx = parseCtxString(ctxSrc)
-      const term = parseTermString(termSrc)
+      const term = parseTermString(termSrc, { primitives })
       const root = derive(ctx, term)
       return { root, error: null }
     } catch (e) {
       return { root: null, error: e instanceof Error ? e.message : String(e) }
     }
-  }, [ctxSrc, termSrc])
+  }, [ctxSrc, termSrc, primitives])
 
   const fullForm = useMemo(() => {
     try {
-      return termToFullString(parseTermString(termSrc))
+      return termToFullString(parseTermString(termSrc, { primitives }))
     } catch {
       return null
     }
-  }, [termSrc])
+  }, [termSrc, primitives])
 
   const latex = useMemo(() => (result.root ? proofToLatex(result.root) : ''), [result.root])
   const [copied, setCopied] = useState(false)
@@ -56,6 +57,14 @@ function App() {
         <label>
           <span className="input-label">
             Expression
+            <button
+              type="button"
+              className="primitives-toggle"
+              aria-pressed={primitives}
+              onClick={() => setPrimitives((v) => !v)}
+            >
+              BoolInt
+            </button>
           </span>
           <div className="input-row">
             <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
@@ -69,6 +78,18 @@ function App() {
               <span>application: <code>f x</code></span>
               <br/>
               <span>arrow type: <code>T -&gt; T</code> or <code>T → T</code></span>
+              {primitives && (
+                <>
+                  <hr/>
+                  <span>T-Lit: <code>true</code> | <code>false</code> : Bool</span>
+                  <br/>
+                  <span>T-Lit: <code>0</code> | <code>1</code> | <code>2</code> | ... : Int</span>
+                  <br/>
+                  <span>T-Prim: <code>neg</code> : Bool → Bool</span>
+                  <br/>
+                  <span>T-Prim: <code>add1</code> : Int → Int</span>
+                </>
+              )}
             </div>
           </div>
           {fullForm && (

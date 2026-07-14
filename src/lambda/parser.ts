@@ -1,3 +1,4 @@
+import { BUILTIN_TYPES } from './primitives'
 import type { Ctx, Term, Type } from './types'
 
 // ponytail: hand-rolled tokenizer/parser instead of a parser-combinator lib —
@@ -9,7 +10,7 @@ const TYPE_ALIASES: Record<string, string> = { '→': '->' }
 const ALIASES = { ...TERM_ALIASES, ...TYPE_ALIASES }
 
 function tokenize(src: string): string[] {
-  const re = /->|=>|→|⇒|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
+  const re = /->|=>|→|⇒|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*|\d+/g
   return (src.match(re) ?? []).filter((t) => t !== '\n').map((t) => ALIASES[t] ?? t)
 }
 
@@ -67,9 +68,15 @@ export function parseTypeString(src: string): Type {
   return t
 }
 
-// Term := Abs | App ; Abs := "λ" IDENT (":" Type)? "." Term ; App := Atom+ ; Atom := IDENT | "(" Term ")"
+export type ParseOptions = { primitives?: boolean }
+
+const isNumber = (t: string | undefined) => !!t && /^\d+$/.test(t)
+// atoms these bind to when primitives are enabled — otherwise plain idents
+const BOOL_LITS: Record<string, boolean> = { true: true, false: false }
+
+// Term := Abs | App ; Abs := "λ" IDENT (":" Type)? "." Term ; App := Atom+ ; Atom := IDENT | NUMBER | "(" Term ")"
 // note: "\" and "fn" are tokenizer aliases for "λ", "=>"/"⇒" for "." — see TERM_ALIASES
-function parseTerm(s: TokenStream): Term {
+function parseTerm(s: TokenStream, opts: ParseOptions): Term {
   if (s.peek() === 'λ') {
     s.next()
     const param = s.next()
@@ -80,30 +87,39 @@ function parseTerm(s: TokenStream): Term {
       paramType = parseType(s)
     }
     s.expect('.')
-    return { kind: 'abs', param, paramType, body: parseTerm(s) }
+    return { kind: 'abs', param, paramType, body: parseTerm(s, opts) }
   }
-  let term = parseTermAtom(s)
-  while (s.peek() === '(' || isIdent(s.peek())) {
-    term = { kind: 'app', fn: term, arg: parseTermAtom(s) }
+  let term = parseTermAtom(s, opts)
+  while (s.peek() === '(' || isIdent(s.peek()) || (opts.primitives && isNumber(s.peek()))) {
+    term = { kind: 'app', fn: term, arg: parseTermAtom(s, opts) }
   }
   return term
 }
 
-function parseTermAtom(s: TokenStream): Term {
+function parseTermAtom(s: TokenStream, opts: ParseOptions): Term {
   if (s.peek() === '(') {
     s.next()
-    const t = parseTerm(s)
+    const t = parseTerm(s, opts)
     s.expect(')')
     return t
   }
+  if (opts.primitives && isNumber(s.peek())) {
+    return { kind: 'lit', type: 'Int', value: Number(s.next()) }
+  }
   const name = s.next()
+  if (opts.primitives && name in BOOL_LITS) {
+    return { kind: 'lit', type: 'Bool', value: BOOL_LITS[name] }
+  }
+  if (opts.primitives && name in BUILTIN_TYPES) {
+    return { kind: 'prim', name }
+  }
   if (!isIdent(name)) throw new Error(`expected a variable, got "${name}"`)
   return { kind: 'var', name }
 }
 
-export function parseTermString(src: string): Term {
+export function parseTermString(src: string, opts: ParseOptions = {}): Term {
   const s = new TokenStream(tokenize(src))
-  const t = parseTerm(s)
+  const t = parseTerm(s, opts)
   if (!s.atEnd()) throw new Error('trailing tokens after term')
   return t
 }
