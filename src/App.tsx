@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Calligraph } from 'calligraph'
 import './App.css'
 import { parseCtxString, parseTermString } from './lambda/parser'
 import { derive } from './lambda/typecheck'
@@ -70,7 +71,11 @@ function App() {
               <span>arrow type: <code>T -&gt; T</code> or <code>T → T</code></span>
             </div>
           </div>
-          {fullForm && <div className="full-form">{fullForm}</div>}
+          {fullForm && (
+            <div className="full-form">
+              <Calligraph>{fullForm}</Calligraph>
+            </div>
+          )}
         </label>
       </div>
 
@@ -78,7 +83,9 @@ function App() {
 
       {result.root && (
         <div className="output">
-          <div className="result-type">Result type: {typeToString(result.root.type)}</div>
+          <div className="result-type">
+            Result type: <Calligraph>{typeToString(result.root.type)}</Calligraph>
+          </div>
 
           {/* ponytail: placeholder only, interactive canvas rendering not implemented yet */}
           <canvas className="derivation-canvas" />
