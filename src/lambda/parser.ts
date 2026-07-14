@@ -3,8 +3,10 @@ import type { Ctx, Term, Type } from './types'
 // ponytail: hand-rolled tokenizer/parser instead of a parser-combinator lib —
 // the grammar is tiny (vars, app, abs, arrow types) and this is ~60 lines.
 function tokenize(src: string): string[] {
-  const re = /->|=>|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
-  return (src.match(re) ?? []).filter((t) => t !== '\n')
+  const re = /->|=>|→|⇒|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
+  return (src.match(re) ?? [])
+    .filter((t) => t !== '\n')
+    .map((t) => (t === '→' ? '->' : t === '⇒' ? '=>' : t))
 }
 
 class TokenStream {

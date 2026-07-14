@@ -48,7 +48,7 @@ function App() {
           </div>
         </label>
         <label>
-          Expression (annotate lambdas: λx:T. e)
+          Expression (annotate lambdas: λx:T. e, or leave unannotated if x is in Γ)
           <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
           <div className="syntax-hint">
             lambda: λx.e | \x.e | fn x =&gt; e

@@ -41,15 +41,19 @@ export function derive(ctx: Ctx, term: Term): ProofNode {
       return { ctx, term, type: fnNode.type.to, rule: 'T-App', premises: [fnNode, argNode] }
     }
     case 'abs': {
-      if (!term.paramType) {
-        throw new TypeError2(`cannot infer type of "${term.param}" — annotate it as "λ${term.param}:T. ..."`)
+      // ponytail: fall back to a same-name Γ binding instead of forcing inline annotation everywhere
+      const paramType = term.paramType ?? lookup(ctx, term.param)
+      if (!paramType) {
+        throw new TypeError2(
+          `cannot infer type of "${term.param}" — annotate it as "λ${term.param}:T. ..." or add "${term.param} : T" to Γ`,
+        )
       }
-      const bodyCtx: Ctx = [...ctx, [term.param, term.paramType]]
+      const bodyCtx: Ctx = [...ctx, [term.param, paramType]]
       const bodyNode = derive(bodyCtx, term.body)
       return {
         ctx,
         term,
-        type: { kind: 'arrow', from: term.paramType, to: bodyNode.type },
+        type: { kind: 'arrow', from: paramType, to: bodyNode.type },
         rule: 'T-Abs',
         premises: [bodyNode],
       }
