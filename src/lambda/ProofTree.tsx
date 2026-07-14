@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, type CSSProperties } from 'react'
+import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ProofNode } from './typecheck'
-import type { Ctx } from './types'
-import { ctxToString, termToString, typeToString } from './types'
+import type { Ctx, Term } from './types'
+import { ctxToString, typeToString } from './types'
 import './ProofTree.css'
 
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
@@ -10,9 +10,14 @@ const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃�
 // distinct environments show up.
 const envColor = (i: number) => `hsl(${(i * 137.508) % 360} 70% 45%)`
 
-// Which environment index is currently hovered, so every badge sharing that
-// index (across the tree and the legend) can light up its bounding box.
-const HoverCtx = createContext<{ hovered: number | null; setHovered: (i: number | null) => void }>({
+// Same golden-angle spread, phase-shifted a half-turn so shadowed variable
+// badges never land on the same hue as a Γ badge (i and i share a start).
+const varColor = (i: number) => `hsl(${(i * 137.508 + 180) % 360} 70% 45%)`
+
+// Which badge is currently hovered, so every badge sharing that key (across
+// the tree and the legend) can light up its bounding box. Keyed by
+// "env:<i>"/"var:<color>" so environment and variable badges never collide.
+const HoverCtx = createContext<{ hovered: string | null; setHovered: (key: string | null) => void }>({
   hovered: null,
   setHovered: () => {},
 })
@@ -28,11 +33,12 @@ function collectEnvs(n: ProofNode, envs: Map<string, Ctx>) {
 
 function EnvBadge({ i }: { i: number }) {
   const { hovered, setHovered } = useContext(HoverCtx)
+  const key = `env:${i}`
   return (
     <span
-      className={`env-badge${hovered === i ? ' active' : ''}`}
+      className={`env-badge${hovered === key ? ' active' : ''}`}
       style={{ '--env-color': envColor(i) } as CSSProperties}
-      onMouseEnter={() => setHovered(i)}
+      onMouseEnter={() => setHovered(key)}
       onMouseLeave={() => setHovered(null)}
     >
       Γ{subscript(i)}
@@ -46,21 +52,128 @@ function envNode(ctx: Ctx, labels: Map<string, number>) {
   return i === undefined ? ctxToString(ctx) : <EnvBadge i={i} />
 }
 
-function Judgment({ n, labels }: { n: ProofNode; labels: Map<string, number> }) {
+// A λ-bound name only actually shadows an outer binding when the abs pushes
+// a fresh Ctx entry (see typecheck.ts) — a Γ-inferred param reuses the outer
+// slot instead, so it isn't a second binder worth distinguishing.
+function paramCtxExtension(ctx: Ctx, t: Extract<Term, { kind: 'abs' }>): Ctx {
+  return t.paramType ? [...ctx, [t.param, t.paramType]] : ctx
+}
+
+function lookupIndex(ctx: Ctx, name: string): number {
+  for (let i = ctx.length - 1; i >= 0; i--) if (ctx[i][0] === name) return i
+  return -1
+}
+
+function collectShadowBinders(n: ProofNode, byName: Map<string, string[]>) {
+  if (n.rule === 'T-Abs' && n.term.kind === 'abs' && n.premises[0].ctx.length > n.ctx.length) {
+    const key = JSON.stringify(n.premises[0].ctx)
+    const keys = byName.get(n.term.param) ?? []
+    if (!keys.includes(key)) keys.push(key)
+    byName.set(n.term.param, keys)
+  }
+  for (const p of n.premises) collectShadowBinders(p, byName)
+}
+
+type BinderLabel = { color: number; sub: number }
+
+// Global color index (so hues stay spread out) + a per-name subscript (so
+// "x₀"/"x₁" reads as "the same x, different binding") for every name that's
+// actually bound more than once somewhere in the tree.
+function buildBinderLabels(byName: Map<string, string[]>): Map<string, BinderLabel> {
+  const labels = new Map<string, BinderLabel>()
+  let color = 0
+  for (const keys of byName.values()) {
+    if (keys.length < 2) continue
+    keys.forEach((key, sub) => labels.set(key, { color: color++, sub }))
+  }
+  return labels
+}
+
+function VarBadge({ name, label }: { name: string; label: BinderLabel }) {
+  const { hovered, setHovered } = useContext(HoverCtx)
+  const key = `var:${label.color}`
   return (
-    <span className="judgment">
-      {envNode(n.ctx, labels)} ⊢ {termToString(n.term)} : {typeToString(n.type)}
+    <span
+      className={`var-badge${hovered === key ? ' active' : ''}`}
+      style={{ '--env-color': varColor(label.color) } as CSSProperties}
+      onMouseEnter={() => setHovered(key)}
+      onMouseLeave={() => setHovered(null)}
+    >
+      {name}
+      {subscript(label.sub)}
     </span>
   )
 }
 
-function Rule({ n, labels }: { n: ProofNode; labels: Map<string, number> }) {
+// The binder a ctx slot belongs to is identified by the prefix ending at
+// that slot — same key scheme collectShadowBinders registers under.
+function binderLabelAt(ctx: Ctx, i: number, binderLabels: Map<string, BinderLabel>): BinderLabel | undefined {
+  return i >= 0 ? binderLabels.get(JSON.stringify(ctx.slice(0, i + 1))) : undefined
+}
+
+// Renders a Γ's bindings, resolving any shadowed name to its own badge so
+// e.g. "x : Bool, x : Nat" reads as which x is which.
+function ctxNode(ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
+  if (ctx.length === 0) return '∅'
+  return ctx.map(([name, type], i) => {
+    const label = binderLabelAt(ctx, i, binderLabels)
+    return (
+      <span key={i}>
+        {i > 0 && ', '}
+        {label ? <VarBadge name={name} label={label} /> : name} : {typeToString(type)}
+      </span>
+    )
+  })
+}
+
+function termNode(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
+  switch (term.kind) {
+    case 'var': {
+      const i = lookupIndex(ctx, term.name)
+      const label = binderLabelAt(ctx, i, binderLabels)
+      return label ? <VarBadge name={term.name} label={label} /> : term.name
+    }
+    case 'abs': {
+      const extended = paramCtxExtension(ctx, term)
+      const label = extended !== ctx ? binderLabels.get(JSON.stringify(extended)) : undefined
+      return (
+        <>
+          λ{label ? <VarBadge name={term.param} label={label} /> : term.param}
+          {term.paramType ? `:${typeToString(term.paramType)}` : ''}. {termNode(term.body, extended, binderLabels)}
+        </>
+      )
+    }
+    case 'app': {
+      const fn =
+        term.fn.kind === 'abs' ? <>({termNode(term.fn, ctx, binderLabels)})</> : termNode(term.fn, ctx, binderLabels)
+      const arg =
+        term.arg.kind === 'var' ? termNode(term.arg, ctx, binderLabels) : <>({termNode(term.arg, ctx, binderLabels)})</>
+      return (
+        <>
+          {fn} {arg}
+        </>
+      )
+    }
+  }
+}
+
+type Labels = { envs: Map<string, number>; binders: Map<string, BinderLabel> }
+
+function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
+  return (
+    <span className="judgment">
+      {envNode(n.ctx, labels.envs)} ⊢ {termNode(n.term, n.ctx, labels.binders)} : {typeToString(n.type)}
+    </span>
+  )
+}
+
+function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
   if (n.rule === 'T-Var') {
     return (
       <div className="rule">
         <div className="premises">
           <span className="judgment">
-            {termToString(n.term)} : {typeToString(n.type)} ∈ {envNode(n.ctx, labels)}
+            {termNode(n.term, n.ctx, labels.binders)} : {typeToString(n.type)} ∈ {envNode(n.ctx, labels.envs)}
           </span>
         </div>
         <div className="line">
@@ -86,11 +199,16 @@ function Rule({ n, labels }: { n: ProofNode; labels: Map<string, number> }) {
 }
 
 export function ProofTree({ root }: { root: ProofNode }) {
-  const [hovered, setHovered] = useState<number | null>(null)
+  const [hovered, setHovered] = useState<string | null>(null)
   const envs = new Map<string, Ctx>()
   collectEnvs(root, envs)
   const entries = [...envs.values()].filter((ctx) => ctx.length > 0)
-  const labels = new Map<string, number>(entries.map((ctx, i) => [JSON.stringify(ctx), i]))
+  const byName = new Map<string, string[]>()
+  collectShadowBinders(root, byName)
+  const labels: Labels = {
+    envs: new Map(entries.map((ctx, i) => [JSON.stringify(ctx), i])),
+    binders: buildBinderLabels(byName),
+  }
 
   return (
     <HoverCtx.Provider value={{ hovered, setHovered }}>
@@ -102,7 +220,7 @@ export function ProofTree({ root }: { root: ProofNode }) {
           <div className="environment-legend">
             {entries.map((ctx, i) => (
               <div key={i} className="environment-entry">
-                <EnvBadge i={i} /> = {ctxToString(ctx)}
+                <EnvBadge i={i} /> = {ctxNode(ctx, labels.binders)}
               </div>
             ))}
           </div>

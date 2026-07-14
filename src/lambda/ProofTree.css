@@ -61,17 +61,39 @@
 
 .env-badge {
   display: inline-block;
-  color: var(--env-color);
+  color: color-mix(in srgb, var(--env-color) 60%, var(--fg));
   border: 1px solid transparent;
   border-radius: var(--radius-small);
   padding: 0 0.3em;
   background: transparent;
   transition:
+    color 0.1s,
     border-color 0.1s,
     background 0.1s;
 }
 
 .env-badge.active {
+  color: var(--env-color);
+  border-color: var(--env-color);
+  background: color-mix(in srgb, var(--env-color) 15%, transparent);
+}
+
+.var-badge {
+  display: inline-block;
+  color: color-mix(in srgb, var(--env-color) 30%, var(--fg));
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  padding: 0 0.15em;
+  background: transparent;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.var-badge.active {
+  color: var(--env-color);
   border-color: var(--env-color);
   background: color-mix(in srgb, var(--env-color) 15%, transparent);
 }
