@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Calligraph } from 'calligraph'
 import './App.css'
 import { parseCtxString, parseTermString } from './lambda/parser'
 import { derive } from './lambda/typecheck'
 import { proofToLatex } from './lambda/latex'
-import { ProofTree } from './lambda/ProofTree'
+import { ProofTree } from './components/ProofTree'
+import { TypeRulesModal } from './components/TypeRulesModal'
 import { typeToString, termToFullString } from './lambda/types'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
@@ -17,6 +18,7 @@ function App() {
   const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
   const [termSrc, setTermSrc] = useState(EXAMPLE.term)
   const [primitives, setPrimitives] = useState(false)
+  const rulesDialogRef = useRef<HTMLDialogElement>(null)
 
   const result = useMemo(() => {
     try {
@@ -65,6 +67,9 @@ function App() {
             >
               BoolInt
             </button>
+            <button type="button" className="primitives-toggle" onClick={() => rulesDialogRef.current?.showModal()}>
+              Type Rules
+            </button>
           </span>
           <div className="input-row">
             <textarea rows={3} value={termSrc} onChange={(e) => setTermSrc(e.target.value)} />
@@ -81,15 +86,9 @@ function App() {
               {primitives && (
                 <>
                   <hr/>
-                  <span>T-Lit: <code>true</code> | <code>false</code> : Bool</span>
+                  <span>literals: <code>true</code> | <code>false</code> | <code>0</code>, <code>1</code>, ...</span>
                   <br/>
-                  <span>T-Lit: <code>0</code> | <code>1</code> | <code>2</code> | ... : Int</span>
-                  <br/>
-                  <span>T-Prim: <code>neg</code> : Bool → Bool</span>
-                  <br/>
-                  <span>T-Prim: <code>add1</code> : Int → Int</span>
-                  <br/>
-                  <span>T-Prim: <code>eq</code> : α → α → Bool (both sides must share a type)</span>
+                  <span>primitives: <code>neg</code> | <code>add1</code> | <code>eq</code> — see Type Rules</span>
                 </>
               )}
             </div>
@@ -130,6 +129,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <TypeRulesModal dialogRef={rulesDialogRef} primitives={primitives} />
 
       <ThemeSwitcher />
     </>

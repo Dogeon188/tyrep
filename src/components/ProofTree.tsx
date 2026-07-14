@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react'
-import type { ProofNode } from './typecheck'
-import type { Ctx, Term } from './types'
-import { ctxToString, typeToString } from './types'
+import type { ProofNode } from '../lambda/typecheck'
+import type { Ctx, Term } from '../lambda/types'
+import { ctxToString, typeToString } from '../lambda/types'
 import './ProofTree.css'
 
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])

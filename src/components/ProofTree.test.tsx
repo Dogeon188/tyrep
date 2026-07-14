@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { parseCtxString, parseTermString } from './parser'
-import { derive } from './typecheck'
+import { parseCtxString, parseTermString } from '../lambda/parser'
+import { derive } from '../lambda/typecheck'
 import { ProofTree } from './ProofTree'
 
 describe('ProofTree shadow badges', () => {
