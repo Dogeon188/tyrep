@@ -5,18 +5,30 @@
 }
 
 .inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  align-items: start;
   margin-bottom: 1rem;
 }
 
 .inputs label {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   font-size: 0.75rem;
   gap: 0.25rem;
+}
+
+.input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.input-row textarea {
+  flex: 1;
 }
 
 .inputs textarea,
@@ -27,8 +39,25 @@
 }
 
 .syntax-hint {
+  flex: 0 0 260px;
   font-size: 0.7rem;
-  color: #888;
+  color: var(--muted);
+  text-align: left;
+}
+
+.syntax-hint hr {
+  margin: 0.5rem 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.syntax-hint code {
+  font-family: inherit;
+  font-size: 0.7rem;
+  background: var(--gray-2);
+  padding: 0.1rem 0.3rem;
+  border-radius: var(--radius-small);
 }
 
 .full-form {
@@ -52,6 +81,41 @@
 .result-type {
   font-weight: bold;
   margin-bottom: 0.75rem;
+}
+
+.derivation-canvas {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 240px;
+  margin-bottom: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-small);
+}
+
+.proof-tree-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.latex-panel-actions {
+  margin: 0.5rem 0;
+}
+
+.latex-panel-actions button {
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--gray-2);
+  color: var(--fg);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.latex-panel-actions button:hover {
+  opacity: 0.7;
 }
 
 .proof-tree {

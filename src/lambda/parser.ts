@@ -2,11 +2,15 @@ import type { Ctx, Term, Type } from './types'
 
 // ponytail: hand-rolled tokenizer/parser instead of a parser-combinator lib —
 // the grammar is tiny (vars, app, abs, arrow types) and this is ~60 lines.
+// expression-level aliases: lambda openers and abs separators
+const TERM_ALIASES: Record<string, string> = { '\\': 'λ', fn: 'λ', '=>': '.', '⇒': '.' }
+// context/type-level aliases: arrow types (used in both the term and Γ boxes)
+const TYPE_ALIASES: Record<string, string> = { '→': '->' }
+const ALIASES = { ...TERM_ALIASES, ...TYPE_ALIASES }
+
 function tokenize(src: string): string[] {
   const re = /->|=>|→|⇒|λ|\\|\.|\(|\)|:|,|\n|[A-Za-z_][A-Za-z0-9_]*/g
-  return (src.match(re) ?? [])
-    .filter((t) => t !== '\n')
-    .map((t) => (t === '→' ? '->' : t === '⇒' ? '=>' : t))
+  return (src.match(re) ?? []).filter((t) => t !== '\n').map((t) => ALIASES[t] ?? t)
 }
 
 class TokenStream {
@@ -63,9 +67,10 @@ export function parseTypeString(src: string): Type {
   return t
 }
 
-// Term := Abs | App ; Abs := ("\"|"λ"|"fn") IDENT (":" Type)? ("."|"=>") Term ; App := Atom+ ; Atom := IDENT | "(" Term ")"
+// Term := Abs | App ; Abs := "λ" IDENT (":" Type)? "." Term ; App := Atom+ ; Atom := IDENT | "(" Term ")"
+// note: "\" and "fn" are tokenizer aliases for "λ", "=>"/"⇒" for "." — see TERM_ALIASES
 function parseTerm(s: TokenStream): Term {
-  if (s.peek() === '\\' || s.peek() === 'λ' || s.peek() === 'fn') {
+  if (s.peek() === 'λ') {
     s.next()
     const param = s.next()
     if (!isIdent(param)) throw new Error(`expected a parameter name, got "${param}"`)
@@ -74,9 +79,7 @@ function parseTerm(s: TokenStream): Term {
       s.next()
       paramType = parseType(s)
     }
-    // ponytail: accept either "." or "=>" regardless of opener, one less branch to maintain
-    if (s.peek() === '=>') s.next()
-    else s.expect('.')
+    s.expect('.')
     return { kind: 'abs', param, paramType, body: parseTerm(s) }
   }
   let term = parseTermAtom(s)
