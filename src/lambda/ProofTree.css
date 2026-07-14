@@ -59,6 +59,25 @@
   font-size: 0.85rem;
 }
 
+.rule {
+  border-radius: var(--radius-small);
+  transition: background 0.1s;
+}
+
+.rule.active {
+  background: var(--accent-bg);
+}
+
+.term-span:hover {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+}
+
+.term-span.active {
+  background: var(--accent-bg);
+  border-radius: var(--radius-small);
+}
+
 .env-badge {
   display: inline-block;
   color: color-mix(in srgb, var(--env-color) 60%, var(--fg));

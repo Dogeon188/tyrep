@@ -17,9 +17,19 @@ const varColor = (i: number) => `hsl(${(i * 137.508 + 180) % 360} 70% 45%)`
 // Which badge is currently hovered, so every badge sharing that key (across
 // the tree and the legend) can light up its bounding box. Keyed by
 // "env:<i>"/"var:<color>" so environment and variable badges never collide.
-const HoverCtx = createContext<{ hovered: string | null; setHovered: (key: string | null) => void }>({
+// hoveredTerm tracks the exact AST node (by reference) under the pointer, so
+// hovering a subterm anywhere it's printed can light up the one proof-tree
+// rule that actually derives it.
+const HoverCtx = createContext<{
+  hovered: string | null
+  setHovered: (key: string | null) => void
+  hoveredTerm: Term | null
+  setHoveredTerm: (t: Term | null) => void
+}>({
   hovered: null,
   setHovered: () => {},
+  hoveredTerm: null,
+  setHoveredTerm: () => {},
 })
 
 // Distinct contexts repeat across many judgments; label them Γ₀, Γ₁, ... in
@@ -126,7 +136,29 @@ function ctxNode(ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
   })
 }
 
+// Every subterm is a distinct AST object (the parser never shares nodes), so
+// reference equality against hoveredTerm uniquely picks out this one node
+// even when the same name/shape recurs elsewhere in the expression.
+function TermHover({ term, children }: { term: Term; children: ReactNode }) {
+  const { hoveredTerm, setHoveredTerm } = useContext(HoverCtx)
+  return (
+    <span
+      className={`term-span${hoveredTerm === term ? ' active' : ''}`}
+      onMouseOver={(e) => {
+        e.stopPropagation()
+        setHoveredTerm(term)
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
 function termNode(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
+  return <TermHover term={term}>{termNodeInner(term, ctx, binderLabels)}</TermHover>
+}
+
+function termNodeInner(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
   switch (term.kind) {
     case 'var': {
       const i = lookupIndex(ctx, term.name)
@@ -167,9 +199,11 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
 }
 
 function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
+  const { hoveredTerm } = useContext(HoverCtx)
+  const active = n.term === hoveredTerm
   if (n.rule === 'T-Var') {
     return (
-      <div className="rule">
+      <div className={`rule${active ? ' active' : ''}`}>
         <div className="premises">
           <span className="judgment">
             {termNode(n.term, n.ctx, labels.binders)} : {typeToString(n.type)} ∈ {envNode(n.ctx, labels.envs)}
@@ -183,7 +217,7 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
     )
   }
   return (
-    <div className="rule">
+    <div className={`rule${active ? ' active' : ''}`}>
       <div className="premises">
         {n.premises.map((p, i) => (
           <Rule key={i} n={p} labels={labels} />
@@ -199,6 +233,7 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
 
 export function ProofTree({ root }: { root: ProofNode }) {
   const [hovered, setHovered] = useState<string | null>(null)
+  const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
   const envs = new Map<string, Ctx>()
   collectEnvs(root, envs)
   const entries = [...envs.values()].filter((ctx) => ctx.length > 0)
@@ -210,8 +245,8 @@ export function ProofTree({ root }: { root: ProofNode }) {
   }
 
   return (
-    <HoverCtx.Provider value={{ hovered, setHovered }}>
-      <div className="proof-tree-panel">
+    <HoverCtx.Provider value={{ hovered, setHovered, hoveredTerm, setHoveredTerm }}>
+      <div className="proof-tree-panel" onMouseLeave={() => setHoveredTerm(null)}>
         <div className="proof-tree">
           <Rule n={root} labels={labels} />
         </div>
