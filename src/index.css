@@ -180,11 +180,13 @@ code {
 }
 
 .theme-switcher {
+  position: fixed;
+  top: 12px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 2px;
   padding: 2px;
-  margin: 32px 0;
   border-radius: var(--radius-small);
   background: var(--gray-2);
 }

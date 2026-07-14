@@ -19,6 +19,7 @@ const PRESETS = [
   { name: 'Const', ctx: '', term: 'λx:b. λy:b. x', primitives: false },
   { name: 'Higher-Order', ctx: 'x : b -> b -> b', term: 'λx. λy:b. x y y', primitives: false },
   { name: 'Bool/Int Primitives', ctx: '', term: 'eq (add1 1) (add1 (add1 0))', primitives: true },
+  { name: 'Variable Shadowing', ctx: 'x : Bool', term: 'λx:Bool. λx:Int. x', primitives: true },
 ]
 
 function App() {

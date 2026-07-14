@@ -25,11 +25,15 @@ const HoverCtx = createContext<{
   setHovered: (key: string | null) => void
   hoveredTerm: Term | null
   setHoveredTerm: (t: Term | null) => void
+  collapsed: Set<Term>
+  toggleCollapse: (t: Term) => void
 }>({
   hovered: null,
   setHovered: () => {},
   hoveredTerm: null,
   setHoveredTerm: () => {},
+  collapsed: new Set(),
+  toggleCollapse: () => {},
 })
 
 // Distinct contexts repeat across many judgments; label them Γ₀, Γ₁, ... in
@@ -39,6 +43,17 @@ function collectEnvs(n: ProofNode, envs: Map<string, Ctx>) {
   const key = JSON.stringify(n.ctx)
   if (!envs.has(key)) envs.set(key, n.ctx)
   for (const p of n.premises) collectEnvs(p, envs)
+}
+
+// Collapsed subtrees are folded into a "D_i ⊢ type" placeholder; index them
+// in first-appearance order and stop descending once a node is collapsed,
+// since its premises no longer need labels.
+function collectCollapseIndices(n: ProofNode, collapsed: Set<Term>, indices: Map<Term, number>) {
+  if (collapsed.has(n.term)) {
+    indices.set(n.term, indices.size)
+    return
+  }
+  for (const p of n.premises) collectCollapseIndices(p, collapsed, indices)
 }
 
 function EnvBadge({ i }: { i: number }) {
@@ -194,7 +209,7 @@ function termNodeInner(term: Term, ctx: Ctx, binderLabels: Map<string, BinderLab
   }
 }
 
-type Labels = { envs: Map<string, number>; binders: Map<string, BinderLabel> }
+type Labels = { envs: Map<string, number>; binders: Map<string, BinderLabel>; collapseIndices: Map<Term, number> }
 
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
   return (
@@ -205,8 +220,26 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
 }
 
 function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
-  const { hoveredTerm } = useContext(HoverCtx)
+  const { hoveredTerm, collapsed, toggleCollapse } = useContext(HoverCtx)
   const active = n.term === hoveredTerm
+
+  if (collapsed.has(n.term)) {
+    const idx = labels.collapseIndices.get(n.term)!
+    return (
+      <div className={`rule collapsed${active ? ' active' : ''}`}>
+        <span className="judgment collapse-toggle" onClick={() => toggleCollapse(n.term)}>
+          D{subscript(idx)} ⊢ {typeToString(n.type)}
+        </span>
+      </div>
+    )
+  }
+
+  const foldToggle = (
+    <span className="collapse-toggle" title="Collapse this subtree" onClick={() => toggleCollapse(n.term)}>
+      ⊟
+    </span>
+  )
+
   if (n.rule === 'T-Var') {
     return (
       <div className={`rule${active ? ' active' : ''}`}>
@@ -217,6 +250,7 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
         </div>
         <div className="line">
           <span className="rule-name">T-Var</span>
+          {foldToggle}
         </div>
         <Judgment n={n} labels={labels} />
       </div>
@@ -231,6 +265,7 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
       </div>
       <div className="line">
         <span className="rule-name">{n.rule}</span>
+        {foldToggle}
       </div>
       <Judgment n={n} labels={labels} />
     </div>
@@ -240,18 +275,28 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
 export function ProofTree({ root }: { root: ProofNode }) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
+  const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
+  const toggleCollapse = (t: Term) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      next.has(t) ? next.delete(t) : next.add(t)
+      return next
+    })
   const envs = new Map<string, Ctx>()
   collectEnvs(root, envs)
   const entries = [...envs.values()].filter((ctx) => ctx.length > 0)
   const byName = new Map<string, string[]>()
   collectShadowBinders(root, byName)
+  const collapseIndices = new Map<Term, number>()
+  collectCollapseIndices(root, collapsed, collapseIndices)
   const labels: Labels = {
     envs: new Map(entries.map((ctx, i) => [JSON.stringify(ctx), i])),
     binders: buildBinderLabels(byName),
+    collapseIndices,
   }
 
   return (
-    <HoverCtx.Provider value={{ hovered, setHovered, hoveredTerm, setHoveredTerm }}>
+    <HoverCtx.Provider value={{ hovered, setHovered, hoveredTerm, setHoveredTerm, collapsed, toggleCollapse }}>
       <div className="proof-tree-panel" onMouseLeave={() => setHoveredTerm(null)}>
         <div className="proof-tree">
           <Rule n={root} labels={labels} />

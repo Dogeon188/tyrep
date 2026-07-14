@@ -68,6 +68,27 @@
   background: var(--accent-bg);
 }
 
+.rule.collapsed {
+  padding-right: 0;
+}
+
+.collapse-toggle {
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.55;
+}
+
+.collapse-toggle:hover {
+  opacity: 1;
+}
+
+.rule-name + .collapse-toggle {
+  position: absolute;
+  left: 100%;
+  top: 0.6em;
+  margin-left: 0.4em;
+}
+
 .term-span:hover {
   text-decoration: underline dotted;
   text-underline-offset: 0.15em;
