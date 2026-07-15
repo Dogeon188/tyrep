@@ -13,3 +13,9 @@
     background: color-mix(in srgb, var(--bracket-color) 15%, transparent);
     border-radius: 2px;
 }
+
+.full-form .keyword-match {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-radius: 2px;
+}

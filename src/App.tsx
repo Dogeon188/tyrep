@@ -96,7 +96,12 @@ function App() {
                         type="button"
                         className="primitives-toggle"
                         aria-pressed={exceptions}
-                        onClick={() => setExceptions((v) => !v)}
+                        onClick={() =>
+                            setExceptions((v) => {
+                                if (v) setEffects(false)
+                                return !v
+                            })
+                        }
                     >
                         Exceptions
                     </button>

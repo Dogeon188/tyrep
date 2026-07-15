@@ -26,10 +26,49 @@ function analyzeBrackets(chars: string[]) {
     return info
 }
 
+// "try"/"with" and "handle"/"with" keywords nest like brackets in the
+// generated fullform text, so a "with" always closes the innermost
+// still-open "try"/"handle".
+const KEYWORD_RE = /\btry\b|\bhandle\b|\bwith\b/g
+
+function analyzeKeywords(text: string) {
+    const ranges = new Map<
+        number,
+        { start: number; end: number; matchStart: number; matchEnd: number }
+    >()
+    const stack: { start: number; end: number }[] = []
+    for (const m of text.matchAll(KEYWORD_RE)) {
+        const start = m.index
+        const end = start + m[0].length
+        if (m[0] === 'with') {
+            const opener = stack.pop()
+            if (!opener) continue
+            for (let i = opener.start; i < opener.end; i++)
+                ranges.set(i, {
+                    start: opener.start,
+                    end: opener.end,
+                    matchStart: start,
+                    matchEnd: end
+                })
+            for (let i = start; i < end; i++)
+                ranges.set(i, {
+                    start,
+                    end,
+                    matchStart: opener.start,
+                    matchEnd: opener.end
+                })
+        } else {
+            stack.push({ start, end })
+        }
+    }
+    return ranges
+}
+
 export function FullForm({ text }: { text: string }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const chars = useMemo(() => Array.from(text), [text])
     const bracketInfo = useMemo(() => analyzeBrackets(chars), [chars])
+    const keywordInfo = useMemo(() => analyzeKeywords(text), [text])
 
     useEffect(() => {
         const container = containerRef.current
@@ -64,7 +103,9 @@ export function FullForm({ text }: { text: string }) {
 
         let highlighted: HTMLElement[] = []
         const clear = () => {
-            highlighted.forEach((el) => el.classList.remove('paren-match'))
+            highlighted.forEach((el) =>
+                el.classList.remove('paren-match', 'keyword-match')
+            )
             highlighted = []
         }
         const onOver = (e: MouseEvent) => {
@@ -76,10 +117,20 @@ export function FullForm({ text }: { text: string }) {
             const spans = getSpans()
             if (spans.length !== chars.length) return
             const i = spans.indexOf(target)
-            const info = i === -1 ? undefined : bracketInfo.get(i)
-            if (!info || info.match === -1) return
-            highlighted = [spans[i], spans[info.match]]
-            highlighted.forEach((el) => el.classList.add('paren-match'))
+            if (i === -1) return
+            const info = bracketInfo.get(i)
+            if (info && info.match !== -1) {
+                highlighted = [spans[i], spans[info.match]]
+                highlighted.forEach((el) => el.classList.add('paren-match'))
+                return
+            }
+            const kw = keywordInfo.get(i)
+            if (!kw) return
+            highlighted = [
+                ...spans.slice(kw.start, kw.end),
+                ...spans.slice(kw.matchStart, kw.matchEnd)
+            ]
+            highlighted.forEach((el) => el.classList.add('keyword-match'))
         }
         container.addEventListener('mouseover', onOver)
         container.addEventListener('mouseout', clear)
@@ -88,7 +139,7 @@ export function FullForm({ text }: { text: string }) {
             container.removeEventListener('mouseover', onOver)
             container.removeEventListener('mouseout', clear)
         }
-    }, [chars, bracketInfo])
+    }, [chars, bracketInfo, keywordInfo])
 
     return (
         <div className="full-form" ref={containerRef}>
