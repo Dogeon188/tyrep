@@ -236,3 +236,34 @@
     border-color: var(--env-color);
     background: color-mix(in srgb, var(--env-color) 15%, transparent);
 }
+
+.effect-info {
+    position: relative;
+    display: inline-block;
+    margin-left: 0.15em;
+    color: var(--muted);
+    cursor: help;
+}
+
+.effect-tooltip {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.3em;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.effect-info:hover .effect-tooltip,
+.effect-info:focus .effect-tooltip {
+    display: block;
+}

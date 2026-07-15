@@ -6,7 +6,8 @@ import {
     type ReactNode
 } from 'react'
 import type { ProofNode } from '../lambda/typecheck'
-import type { Ctx, Term } from '../lambda/types'
+import { TYVAR } from '../lambda/primitives'
+import type { Ctx, Effect, Term } from '../lambda/types'
 import { ctxToString, effectToString, typeToString } from '../lambda/types'
 import './ProofTree.css'
 
@@ -267,6 +268,56 @@ type Labels = {
     collapseIndices: Map<Term, number>
 }
 
+// Mirrors typecheck.ts's T-App effect derivation: fn's own effect, then the
+// argument's (pinned to the callee's declared param type if the argument was
+// still an unresolved `op` marker), then the callee's latent arrow effect —
+// composed left-to-right with `∘`.
+function appEffectFormula(n: ProofNode): string | null {
+    const [fnNode, argNode] = n.premises
+    if (fnNode.type.kind !== 'arrow') return null
+    const isPoly = fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
+    const argEffect: Effect =
+        !isPoly && argNode.effect === argNode.type ? fnNode.type.from : argNode.effect
+    return (
+        `${effectToString(fnNode.effect)} ∘ ${effectToString(argEffect)} ∘ ` +
+        `${effectToString(fnNode.type.effect)} = ${effectToString(n.effect)}`
+    )
+}
+
+// Mirrors tryEffect: the handler only contributes when the body isn't
+// already pure — spell out which branch actually decided the result.
+function tryEffectFormula(n: ProofNode): string {
+    const [bodyNode, handlerNode] = n.premises
+    return bodyNode.effect === 'p'
+        ? `body is pure ⟹ !${effectToString(n.effect)}`
+        : `body !${effectToString(bodyNode.effect)} ⟹ take handler's ` +
+              `!${effectToString(handlerNode.effect)}`
+}
+
+// Only T-App (∘) and T-Try (•) genuinely combine two sub-effects into a new
+// one; every other rule's effect is just copied or looked up, not worth a
+// tooltip.
+function effectFormula(n: ProofNode): string | null {
+    if (n.rule === 'T-App') return appEffectFormula(n)
+    if (n.rule === 'T-Try') return tryEffectFormula(n)
+    return null
+}
+
+function EffectAnnotation({ n }: { n: ProofNode }) {
+    const formula = effectFormula(n)
+    return (
+        <>
+            {' '}
+            !{effectToString(n.effect)}
+            {formula && (
+                <span className="effect-info" tabIndex={0}>
+                    ?<span className="effect-tooltip">{formula}</span>
+                </span>
+            )}
+        </>
+    )
+}
+
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
     const { compact, exceptions, effects } = useContext(HoverCtx)
     const showEffects = exceptions || effects
@@ -281,7 +332,7 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
             {termNode(n.term, n.ctx, labels.binders)}{' '}
             <span className="judgment-separator">:</span>{' '}
             {typeToString(n.type, showEffects)}
-            {showEffects && ` !${effectToString(n.effect)}`}
+            {showEffects && <EffectAnnotation n={n} />}
         </span>
     )
 }
@@ -333,7 +384,7 @@ function Rule({
                 >
                     D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
                     {typeToString(n.type, showEffects)}
-                    {showEffects && ` !${effectToString(n.effect)}`}
+                    {showEffects && <EffectAnnotation n={n} />}
                 </span>
             </div>
         )
@@ -365,7 +416,7 @@ function Rule({
                         {termNode(n.term, n.ctx, labels.binders)}{' '}
                         <span className="judgment-separator">:</span>{' '}
                         {typeToString(n.type, showEffects)}
-                        {showEffects && ` !${effectToString(n.effect)}`}
+                        {showEffects && <EffectAnnotation n={n} />}
                         {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
                     </span>
                 </div>
