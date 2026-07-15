@@ -1,77 +1,41 @@
-# React + TypeScript + Vite
+# TyRep
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A simply-typed lambda calculus type checker with proof-tree visualization.
 
-Currently, two official plugins are available:
+Type a term and (optionally) a context, and TyRep derives its type using
+[STLC typing rules](https://en.wikipedia.org/wiki/Simply_typed_lambda_calculus), rendering the derivation as a proof tree. Supports
+Bool/Int primitives (`add1`, `eq`, ...) and a LaTeX export of the proof tree.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Usage
 
-## React Compiler
+### Web app
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+bun install
+bun run dev      # start dev server
+bun run build    # type-check + production build
+bun run lint
+bun test         # run typecheck/parser tests
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### CLI
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+An example:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+bun run cli.ts --term "λx:b -> b -> b. λy:b. x y y" [--ctx "x : T, y : T"] [--latex]
 ```
+
+`--term` is the expression to derive type; `--ctx` is the typing environment; `--latex` outputs the derivation in LaTeX [bussproofs](https://mathweb.ucsd.edu/~sbuss/ResearchWeb/bussproofs/index.html) format.
+
+## Project layout
+
+- `src/lambda/` — parser, typechecker, term/type representation, LaTeX export
+- `src/components/` — components for the web app
+- `src/App.tsx` — main UI
+- `cli.ts` — command-line interface for the same type checker
+
+## Stack
+
+React 19 + TypeScript + Vite, [calligraph](https://www.npmjs.com/package/calligraph)
+for rendering, Bun for the CLI/tests.
