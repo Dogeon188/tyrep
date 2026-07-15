@@ -36,6 +36,12 @@ const PRESETS = [
         ctx: 'x : Bool',
         term: 'λx:Bool. λx:Int. x',
         primitives: true
+    },
+    {
+        name: 'Arrow Domain',
+        ctx: 'x : (b -> b) -> b\ny : b',
+        term: 'x (λy. y)',
+        primitives: false
     }
 ]
 

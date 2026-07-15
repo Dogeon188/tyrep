@@ -31,8 +31,60 @@ function lookup(ctx: Ctx, name: string): Type | undefined {
     return undefined
 }
 
+const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
+
+// Names free in `term` that aren't already bound in `ctx`, in first-appearance
+// (left-to-right) order — mirrors FV(e) from the paper, minus whatever the
+// caller already supplied a binding for.
+function collectFreeVars(term: Term, ctx: Ctx): string[] {
+    const seen = new Set<string>()
+    const order: string[] = []
+    function walk(t: Term, bound: Set<string>) {
+        switch (t.kind) {
+            case 'var':
+                if (
+                    !bound.has(t.name) &&
+                    lookup(ctx, t.name) === undefined &&
+                    !seen.has(t.name)
+                ) {
+                    seen.add(t.name)
+                    order.push(t.name)
+                }
+                return
+            case 'lit':
+            case 'prim':
+                return
+            case 'abs':
+                walk(t.body, new Set(bound).add(t.param))
+                return
+            case 'app':
+                walk(t.fn, bound)
+                walk(t.arg, bound)
+        }
+    }
+    walk(term, new Set())
+    return order
+}
+
+// Like the PDF's "extend Γ with a type for the free variable to get a closed
+// derivation" trick (section on open derivations): rather than erroring on a
+// free variable, invent a fresh abstract type τ_1, τ_2, ... for it.
+function withFreeVarTypes(ctx: Ctx, term: Term): Ctx {
+    const free = collectFreeVars(term, ctx)
+    if (free.length === 0) return ctx
+    const fresh: Ctx = free.map((name, i) => [
+        name,
+        { kind: 'base', name: `τ${subscript(i + 1)}` }
+    ])
+    return [...fresh, ...ctx]
+}
+
 /** Pure synthesis over T-Var/T-App/T-Abs: context + expression -> result type. */
 export function derive(ctx: Ctx, term: Term): ProofNode {
+    return deriveNode(withFreeVarTypes(ctx, term), term)
+}
+
+function deriveNode(ctx: Ctx, term: Term): ProofNode {
     switch (term.kind) {
         case 'lit':
             return {
@@ -56,13 +108,13 @@ export function derive(ctx: Ctx, term: Term): ProofNode {
             return { ctx, term, type, rule: 'T-Var', premises: [] }
         }
         case 'app': {
-            const fnNode = derive(ctx, term.fn)
+            const fnNode = deriveNode(ctx, term.fn)
             if (fnNode.type.kind !== 'arrow') {
                 throw new TypeError2(
                     `applying non-function of type ${typeToString(fnNode.type)}`
                 )
             }
-            const argNode = derive(ctx, term.arg)
+            const argNode = deriveNode(ctx, term.arg)
             const isPoly =
                 fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
             if (!isPoly && !typesEqual(argNode.type, fnNode.type.from)) {
@@ -84,7 +136,7 @@ export function derive(ctx: Ctx, term: Term): ProofNode {
             // Reusing the same Γ binding (no explicit annotation) shouldn't duplicate
             // it in the body's context — that just prints "x : T, x : T" in the legend.
             const bodyCtx: Ctx = term.paramType ? [...ctx, [term.param, paramType]] : ctx
-            const bodyNode = derive(bodyCtx, term.body)
+            const bodyNode = deriveNode(bodyCtx, term.body)
             return {
                 ctx,
                 term,
