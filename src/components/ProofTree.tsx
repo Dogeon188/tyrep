@@ -157,22 +157,6 @@ function binderLabelAt(
     return i >= 0 ? binderLabels.get(JSON.stringify(ctx.slice(0, i + 1))) : undefined
 }
 
-// Renders a Γ's bindings, resolving any shadowed name to its own badge so
-// e.g. "x : Bool, x : Nat" reads as which x is which.
-function ctxNode(ctx: Ctx, binderLabels: Map<string, BinderLabel>): ReactNode {
-    if (ctx.length === 0) return '∅'
-    return ctx.map(([name, type], i) => {
-        const label = binderLabelAt(ctx, i, binderLabels)
-        return (
-            <span key={i}>
-                {i > 0 && ', '}
-                {label ? <VarBadge name={name} label={label} /> : name} :{' '}
-                {typeToString(type)}
-            </span>
-        )
-    })
-}
-
 // Every subterm is a distinct AST object (the parser never shares nodes), so
 // reference equality against hoveredTerm uniquely picks out this one node
 // even when the same name/shape recurs elsewhere in the expression.
@@ -439,14 +423,45 @@ export function ProofTree({ root }: { root: ProofNode }) {
                 {entries.length > 0 && (
                     <div className="environment-legend">
                         {entries.map((ctx, i) => (
-                            <div
+                            <section
                                 key={i}
                                 className="environment-entry"
                                 onMouseEnter={() => setHoveredEnv(i)}
                                 onMouseLeave={() => setHoveredEnv(null)}
                             >
-                                <EnvBadge i={i} /> = {ctxNode(ctx, labels.binders)}
-                            </div>
+                                <div className="environment-entry-title">
+                                    <EnvBadge i={i} />
+                                </div>
+                                <table className="environment-table">
+                                    <tbody>
+                                        {ctx.map(([name, type], pairIndex) => (
+                                            <tr key={pairIndex}>
+                                                <th scope="row">
+                                                    {(() => {
+                                                        const label = binderLabelAt(
+                                                            ctx,
+                                                            pairIndex,
+                                                            labels.binders
+                                                        )
+                                                        return label ? (
+                                                            <VarBadge
+                                                                name={name}
+                                                                label={label}
+                                                            />
+                                                        ) : (
+                                                            name
+                                                        )
+                                                    })()}
+                                                </th>
+                                                <td className="environment-table-separator">
+                                                    :
+                                                </td>
+                                                <td>{typeToString(type)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </section>
                         ))}
                     </div>
                 )}

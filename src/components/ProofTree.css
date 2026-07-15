@@ -41,12 +41,58 @@
 
 .environment-legend {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.15rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: center;
+    align-self: stretch;
+    overflow-x: auto;
+    gap: 0.5rem;
     border-top: 1px solid var(--border);
     padding-top: 0.4rem;
+    padding-inline: 0.4rem;
     font-size: 0.8rem;
+}
+
+.environment-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1 1 16rem;
+    width: clamp(12rem, 24vw, 18rem);
+    max-width: 18rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--gray-1);
+}
+
+.environment-entry-title {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.environment-table {
+    width: max-content;
+    border-collapse: collapse;
+}
+
+.environment-table th,
+.environment-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0;
+}
+
+.environment-table th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.environment-table td.environment-table-separator {
+    padding: 0 1ch;
+    color: var(--gray-6);
+    white-space: nowrap;
 }
 
 .rule {
@@ -54,6 +100,8 @@
     flex-direction: column;
     align-items: center;
     padding-right: 1.8em;
+    border-radius: var(--radius-small);
+    transition: background 0.1s;
 }
 
 .premises {
@@ -91,11 +139,6 @@
 
 .judgment-separator {
     color: var(--gray-6);
-}
-
-.rule {
-    border-radius: var(--radius-small);
-    transition: background 0.1s;
 }
 
 .rule.compact-env {
