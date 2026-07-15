@@ -104,3 +104,68 @@ describe('derive — exceptions (exn.pdf §6/Appendix B)', () => {
         })
     })
 })
+
+describe('derive — algebraic effects (eff.pdf §6)', () => {
+    const opts = { primitives: true, effects: true }
+
+    test('op resolves to the concrete type demanded by its context (eq 1 op : bool ! int)', () => {
+        // eff.pdf worked example D1: ∅ ⊢ eq 1 op : bool ! int
+        const root = derive([], parseTermString('eq 1 op', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(root.effect).toEqual({ kind: 'base', name: 'Int' })
+    })
+
+    test('op resolves through a unary primitive too (neg op : bool ! bool)', () => {
+        // eff.pdf worked example D5: ∅ ⊢ neg op : bool ! bool
+        const root = derive([], parseTermString('neg op', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(root.effect).toEqual({ kind: 'base', name: 'Bool' })
+    })
+
+    test('bare op with nothing to pin it stays an unresolved ⊥ type and effect', () => {
+        const root = derive([], parseTermString('op', opts))
+        expect(root.type).toEqual({ kind: 'base', name: '⊥' })
+        expect(root.effect).toEqual({ kind: 'base', name: '⊥' })
+    })
+
+    test('handle resolves an escaping op via a matching continuation type', () => {
+        // eff.pdf worked example: handle (eq 1 op) with {x. neg x; k. (λx. x) (k 0)} : bool ! p
+        const root = derive(
+            [],
+            parseTermString(
+                'handle (eq 1 op) with {x. neg x; k. (λx:Bool. x) (k 0)}',
+                opts
+            )
+        )
+        expect(root.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(root.effect).toBe('p')
+    })
+
+    test('handle with a pure body still type-checks by leaving k unconstrained', () => {
+        const root = derive([], parseTermString('handle 5 with {x. x; k. k 0}', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Int' })
+        expect(root.effect).toBe('p')
+    })
+
+    test('a continuation used at the wrong type is a type error', () => {
+        // eff.pdf worked example D7: k requires bool, but is applied to the int 2
+        expect(() =>
+            derive([], parseTermString('handle (neg op) with {x. x; k. k 2}', opts))
+        ).toThrow(TypeError2)
+    })
+
+    test('mismatched handler-clause types are a type error', () => {
+        expect(() =>
+            derive([], parseTermString('handle 5 with {x. x; k. false}', opts))
+        ).toThrow(TypeError2)
+    })
+
+    test('"op"/"handle"/"with" stay usable as identifiers when effects are off', () => {
+        expect(derive([], parseTermString('λop:Int. op')).type).toEqual({
+            kind: 'arrow',
+            from: { kind: 'base', name: 'Int' },
+            to: { kind: 'base', name: 'Int' },
+            effect: 'p'
+        })
+    })
+})

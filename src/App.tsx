@@ -7,7 +7,12 @@ import { ProofTree } from './components/ProofTree'
 import { ReferenceModal } from './components/ReferenceModal'
 import { LabeledTextarea } from './components/LabeledTextarea'
 import { FullForm } from './components/FullForm'
-import { typeToString, typeToUncurriedString, termToFullString } from './lambda/types'
+import {
+    typeToString,
+    typeToUncurriedString,
+    termToFullString,
+    effectToString
+} from './lambda/types'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { GithubLink } from './components/GithubLink'
 
@@ -17,69 +22,109 @@ const EXAMPLE = {
 }
 
 const PRESETS = [
-    { name: 'Identity', ctx: '', term: 'λx:b. x', primitives: false, exceptions: false },
+    {
+        name: 'Identity',
+        ctx: '',
+        term: 'λx:b. x',
+        primitives: false,
+        exceptions: false,
+        effects: false
+    },
     {
         name: 'Const',
         ctx: '',
         term: 'λx:b. λy:b. x',
         primitives: false,
-        exceptions: false
+        exceptions: false,
+        effects: false
     },
     {
         name: 'Higher-Order',
         ctx: 'x : b -> b -> b',
         term: 'λx. λy:b. x y y',
         primitives: false,
-        exceptions: false
+        exceptions: false,
+        effects: false
     },
     {
         name: 'Bool/Int Primitives',
         ctx: '',
         term: 'eq (add1 1) (add1 (add1 0))',
         primitives: true,
-        exceptions: false
+        exceptions: false,
+        effects: false
     },
     {
         name: 'Variable Shadowing',
         ctx: 'x : Bool',
         term: 'λx:Bool. λx:Int. x',
         primitives: true,
-        exceptions: false
+        exceptions: false,
+        effects: false
     },
     {
         name: 'Arrow Domain',
         ctx: 'x : (b -> b) -> b\ny : b',
         term: 'x (λy. y)',
         primitives: false,
-        exceptions: false
+        exceptions: false,
+        effects: false
     },
     {
         name: 'Exceptions: Handled',
         ctx: '',
         term: 'try ((λx:Int. error) 1) with 2',
         primitives: true,
-        exceptions: true
+        exceptions: true,
+        effects: false
     },
     {
         name: 'Exceptions: Unhandled',
         ctx: '',
         term: 'add1 error',
         primitives: true,
-        exceptions: true
+        exceptions: true,
+        effects: false
     },
     {
         name: 'Exceptions: Nested Try',
         ctx: '',
         term: 'neg (try (eq error 0) with false)',
         primitives: true,
-        exceptions: true
+        exceptions: true,
+        effects: false
     },
     {
         name: 'Exceptions: Handler Not Taken',
         ctx: '',
         term: 'try 3 with error',
         primitives: true,
-        exceptions: true
+        exceptions: true,
+        effects: false
+    },
+    {
+        name: 'Effects: Resolved',
+        ctx: '',
+        term: 'handle (eq 1 op) with {x. neg x; k. (λx:Bool. x) (k 0)}',
+        primitives: true,
+        exceptions: true,
+        effects: true
+    },
+    {
+        name: 'Effects: Unhandled',
+        ctx: '',
+        term: 'add1 op',
+        primitives: true,
+        exceptions: true,
+        effects: true
+    },
+    {
+        name: 'Effects: Mismatched Continuation',
+        ctx: '',
+        term: 'handle (neg op) with {x. x; k. k 2}',
+        primitives: true,
+        exceptions: true,
+        effects: true
     }
 ]
 
@@ -88,31 +133,35 @@ function App() {
     const [termSrc, setTermSrc] = useState(EXAMPLE.term)
     const [primitives, setPrimitives] = useState(false)
     const [exceptions, setExceptions] = useState(false)
+    const [effects, setEffects] = useState(false)
     const [compact, setCompact] = useState(false)
     const rulesDialogRef = useRef<HTMLDialogElement>(null)
+    const showEffects = exceptions || effects
 
     const result = useMemo(() => {
         try {
             const ctx = parseCtxString(ctxSrc)
-            const term = parseTermString(termSrc, { primitives, exceptions })
+            const term = parseTermString(termSrc, { primitives, exceptions, effects })
             const root = derive(ctx, term)
             return { root, error: null }
         } catch (e) {
             return { root: null, error: e instanceof Error ? e.message : String(e) }
         }
-    }, [ctxSrc, termSrc, primitives, exceptions])
+    }, [ctxSrc, termSrc, primitives, exceptions, effects])
 
     const fullForm = useMemo(() => {
         try {
-            return termToFullString(parseTermString(termSrc, { primitives, exceptions }))
+            return termToFullString(
+                parseTermString(termSrc, { primitives, exceptions, effects })
+            )
         } catch {
             return null
         }
-    }, [termSrc, primitives, exceptions])
+    }, [termSrc, primitives, exceptions, effects])
 
     const latex = useMemo(
-        () => (result.root ? proofToLatex(result.root, exceptions) : ''),
-        [result.root, exceptions]
+        () => (result.root ? proofToLatex(result.root, showEffects) : ''),
+        [result.root, showEffects]
     )
 
     return (
@@ -132,6 +181,7 @@ function App() {
                                 setTermSrc(preset.term)
                                 setPrimitives(preset.primitives)
                                 setExceptions(preset.exceptions)
+                                setEffects(preset.effects)
                             }}
                         >
                             <option value="" disabled>
@@ -159,6 +209,19 @@ function App() {
                         onClick={() => setExceptions((v) => !v)}
                     >
                         Exceptions
+                    </button>
+                    <button
+                        type="button"
+                        className="primitives-toggle"
+                        aria-pressed={effects}
+                        onClick={() =>
+                            setEffects((v) => {
+                                if (!v) setExceptions(true)
+                                return !v
+                            })
+                        }
+                    >
+                        Effects
                     </button>
                     <button
                         type="button"
@@ -237,6 +300,23 @@ function App() {
                                     </span>
                                 </>
                             )}
+                            {effects && (
+                                <>
+                                    <hr />
+                                    <span>
+                                        operation: <code>op</code>
+                                    </span>
+                                    <br />
+                                    <span>
+                                        handle:{' '}
+                                        <code>
+                                            handle e with {'{'}x. e<sub>r</sub>; k. e
+                                            <sub>o</sub>
+                                            {'}'}
+                                        </code>
+                                    </span>
+                                </>
+                            )}
                         </>
                     }
                 >
@@ -254,10 +334,10 @@ function App() {
                             text={
                                 compact
                                     ? typeToUncurriedString(result.root.type)
-                                    : typeToString(result.root.type, exceptions)
+                                    : typeToString(result.root.type, showEffects)
                             }
                         />
-                        {exceptions && ` !${result.root.effect}`}
+                        {showEffects && ` !${effectToString(result.root.effect)}`}
                     </div>
 
                     <div className="latex-panel">
@@ -268,6 +348,7 @@ function App() {
                                 compact={compact}
                                 setCompact={setCompact}
                                 exceptions={exceptions}
+                                effects={effects}
                             />
                         </div>
                         <textarea
@@ -284,6 +365,7 @@ function App() {
                 dialogRef={rulesDialogRef}
                 primitives={primitives}
                 exceptions={exceptions}
+                effects={effects}
                 compact={compact}
             />
 

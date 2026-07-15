@@ -1,5 +1,5 @@
 import type { ProofNode } from './typecheck'
-import type { Ctx, Term, Type } from './types'
+import type { Ctx, Effect, Term, Type } from './types'
 import { BOTTOM, TYVAR } from './primitives'
 
 function collectEnvs(n: ProofNode, envs: Map<string, Ctx>) {
@@ -73,8 +73,12 @@ function termToString(t: Term, ctx: Ctx, binderSubs: Map<string, number>): strin
             return t.type === 'Bool' ? `\\texttt{${t.value}}` : String(t.value)
         case 'error':
             return '\\texttt{error}'
+        case 'op':
+            return '\\texttt{op}'
         case 'try':
             return `\\texttt{try}\\ ${termToString(t.body, ctx, binderSubs)}\\ \\texttt{with}\\ ${termToString(t.handler, ctx, binderSubs)}`
+        case 'handle':
+            return `\\texttt{handle}\\ ${termToString(t.body, ctx, binderSubs)}\\ \\texttt{with}\\ \\{${t.x}.\\ ${termToString(t.er, ctx, binderSubs)}; ${t.k}.\\ ${termToString(t.eo, ctx, binderSubs)}\\}`
         case 'abs': {
             const extended = paramCtxExtension(ctx, t)
             const param = varLatex(
@@ -85,7 +89,7 @@ function termToString(t: Term, ctx: Ctx, binderSubs: Map<string, number>): strin
         }
         case 'app': {
             const fn =
-                t.fn.kind === 'abs' || t.fn.kind === 'try'
+                t.fn.kind === 'abs' || t.fn.kind === 'try' || t.fn.kind === 'handle'
                     ? `(${termToString(t.fn, ctx, binderSubs)})`
                     : termToString(t.fn, ctx, binderSubs)
             const arg =
@@ -116,7 +120,12 @@ function typeToLatex(t: Type, showEffect: boolean): string {
             ? `(${typeToLatex(t.to, showEffect)})`
             : typeToLatex(t.to, showEffect)
     const arrow = `${from} \\to ${to}`
-    return showEffect ? `${arrow}\\ !${t.effect}` : arrow
+    return showEffect ? `${arrow}\\ !${effectToLatex(t.effect)}` : arrow
+}
+
+// A Type-valued (algebraic-effect) ϵ prints as that type's own form.
+function effectToLatex(e: Effect): string {
+    return typeof e === 'string' ? e : typeToLatex(e, false)
 }
 
 // Renders a Γ's bindings, resolving any shadowed name to its own subscript so
@@ -152,7 +161,7 @@ function judgment(
     binderSubs: Map<string, number>,
     exceptions: boolean
 ): string {
-    const effect = exceptions ? `\\ !${n.effect}` : ''
+    const effect = exceptions ? `\\ !${effectToLatex(n.effect)}` : ''
     return `${envLatex(n.ctx, labels, binderSubs, exceptions)} \\vdash ${escape(termToString(n.term, n.ctx, binderSubs))} : ${typeToLatex(n.type, exceptions)}${effect}`
 }
 
@@ -178,7 +187,12 @@ function nodeToLatex(
     const premiseLatex = n.premises
         .map((p) => nodeToLatex(p, labels, binderSubs, exceptions))
         .join('\n')
-    const infer = n.premises.length === 1 ? 'UnaryInfC' : 'BinaryInfC'
+    const infer =
+        n.premises.length === 1
+            ? 'UnaryInfC'
+            : n.premises.length === 2
+              ? 'BinaryInfC'
+              : 'TrinaryInfC'
     return `${premiseLatex}\n\\RightLabel{\\scriptsize \\textsc{${n.rule}}}\n\\${infer}{${concl}}`
 }
 

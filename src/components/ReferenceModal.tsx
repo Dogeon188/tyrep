@@ -19,8 +19,8 @@ function Rule1({
     conclusion,
     name
 }: {
-    premise: string
-    conclusion: string
+    premise: ReactNode
+    conclusion: ReactNode
     name: string
 }) {
     return (
@@ -42,9 +42,9 @@ function Rule2({
     conclusion,
     name
 }: {
-    premise1: string
-    premise2: string
-    conclusion: string
+    premise1: ReactNode
+    premise2: ReactNode
+    conclusion: ReactNode
     name: string
 }) {
     return (
@@ -65,13 +65,16 @@ export function ReferenceModal({
     dialogRef,
     primitives,
     exceptions,
+    effects,
     compact
 }: {
     dialogRef: React.RefObject<HTMLDialogElement | null>
     primitives: boolean
     exceptions: boolean
+    effects: boolean
     compact: boolean
 }) {
+    const showEffects = exceptions || effects
     return (
         <dialog
             ref={dialogRef}
@@ -89,17 +92,23 @@ export function ReferenceModal({
                 </div>
             </form>
 
-            {(primitives || exceptions) && (
+            {(primitives || exceptions || effects) && (
                 <div className="rules-dialog-section">
                     <div className="rules-dialog-subhead">Base types</div>
                     <div className="rules-row">
                         {primitives && <span className="judgment">Bool</span>}
                         {primitives && <span className="judgment">Int</span>}
-                        {exceptions && <span className="judgment">⊥</span>}
+                        {(exceptions || effects) && <span className="judgment">⊥</span>}
                     </div>
                     {exceptions && (
                         <p className="rules-dialog-note">
                             <code>⊥</code>: type of <code>error</code>, equal to any type
+                        </p>
+                    )}
+                    {effects && (
+                        <p className="rules-dialog-note">
+                            <code>⊥</code>: also stands for <code>op</code>'s still-open
+                            type, until pinned down by its context
                         </p>
                     )}
                 </div>
@@ -110,7 +119,7 @@ export function ReferenceModal({
                 <div className="rules-row">
                     <Axiom
                         conclusion={
-                            exceptions ? (
+                            showEffects ? (
                                 <>x : T ∈ Γ ⊢ x : T ! p</>
                             ) : (
                                 <>x : T ∈ Γ ⊢ x : T</>
@@ -119,9 +128,11 @@ export function ReferenceModal({
                         name="T-Var"
                     />
                     <Rule1
-                        premise={exceptions ? 'Γ, x:T₁ ⊢ e : T₂ ! ϵ' : 'Γ, x:T₁ ⊢ e : T₂'}
+                        premise={
+                            showEffects ? 'Γ, x:T₁ ⊢ e : T₂ ! ϵ' : 'Γ, x:T₁ ⊢ e : T₂'
+                        }
                         conclusion={
-                            exceptions
+                            showEffects
                                 ? 'Γ ⊢ λx:T₁.e : (T₁ → T₂ !ϵ) ! p'
                                 : 'Γ ⊢ λx:T₁.e : T₁ → T₂'
                         }
@@ -129,11 +140,11 @@ export function ReferenceModal({
                     />
                     <Rule2
                         premise1={
-                            exceptions ? 'Γ ⊢ f : (T₁ → T₂ !ϵ₃) ! ϵ₁' : 'Γ ⊢ f : T₁ → T₂'
+                            showEffects ? 'Γ ⊢ f : (T₁ → T₂ !ϵ₃) ! ϵ₁' : 'Γ ⊢ f : T₁ → T₂'
                         }
-                        premise2={exceptions ? 'Γ ⊢ a : T₁ ! ϵ₂' : 'Γ ⊢ a : T₁'}
+                        premise2={showEffects ? 'Γ ⊢ a : T₁ ! ϵ₂' : 'Γ ⊢ a : T₁'}
                         conclusion={
-                            exceptions ? 'Γ ⊢ f a : T₂ ! (ϵ₁ ∘ ϵ₂ ∘ ϵ₃)' : 'Γ ⊢ f a : T₂'
+                            showEffects ? 'Γ ⊢ f a : T₂ ! (ϵ₁ ∘ ϵ₂ ∘ ϵ₃)' : 'Γ ⊢ f a : T₂'
                         }
                         name="T-App"
                     />
@@ -141,7 +152,7 @@ export function ReferenceModal({
                         <>
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ true : Bool ! p</>
                                     ) : (
                                         <>∅ ⊢ true : Bool</>
@@ -151,7 +162,7 @@ export function ReferenceModal({
                             />
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ false : Bool ! p</>
                                     ) : (
                                         <>∅ ⊢ false : Bool</>
@@ -161,7 +172,7 @@ export function ReferenceModal({
                             />
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ n : Int ! p (n = 0, 1, 2, ...)</>
                                     ) : (
                                         <>∅ ⊢ n : Int (n = 0, 1, 2, ...)</>
@@ -171,7 +182,7 @@ export function ReferenceModal({
                             />
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ neg : (Bool → Bool !p) ! p</>
                                     ) : (
                                         <>∅ ⊢ neg : Bool → Bool</>
@@ -181,7 +192,7 @@ export function ReferenceModal({
                             />
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ add1 : (Int → Int !p) ! p</>
                                     ) : (
                                         <>∅ ⊢ add1 : Int → Int</>
@@ -191,7 +202,7 @@ export function ReferenceModal({
                             />
                             <Axiom
                                 conclusion={
-                                    exceptions ? (
+                                    showEffects ? (
                                         <>∅ ⊢ eq : (α → (α → Bool !p) !p) ! p</>
                                     ) : (
                                         <>∅ ⊢ eq : α → α → Bool</>
@@ -212,25 +223,72 @@ export function ReferenceModal({
                             />
                         </>
                     )}
+                    {effects && (
+                        <>
+                            <Axiom conclusion={<>Γ ⊢ op : τ ! τ</>} name="T-Op" />
+                            <div className="rule">
+                                <div className="premises">
+                                    <span className="judgment">Γ ⊢ e : σ ! ϵ'</span>
+                                    <span className="judgment">
+                                        Γ, x:σ ⊢ e<sub>r</sub> : τ ! ϵ
+                                    </span>
+                                    <span className="judgment">
+                                        Γ, k:ϵ'→τ !ϵ ⊢ e<sub>o</sub> : τ ! ϵ
+                                    </span>
+                                </div>
+                                <div className="line">
+                                    <span className="rule-name">T-Handle</span>
+                                </div>
+                                <span className="judgment">
+                                    Γ ⊢ handle e with {'{'}x.e<sub>r</sub>; k.e
+                                    <sub>o</sub>
+                                    {'}'} : τ ! ϵ
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
-            {exceptions && (
+            {(exceptions || effects) && (
                 <div className="rules-dialog-section">
                     <div className="rules-dialog-subhead">Effects</div>
                     <p className="rules-dialog-note">
-                        <code>!p</code> pure, <code>!i</code> impure (may raise); arrows
-                        carry their body&apos;s effect
+                        <code>!p</code> pure
+                        {exceptions && (
+                            <>
+                                , <code>!i</code> impure (may raise)
+                            </>
+                        )}
+                        {effects && (
+                            <>
+                                <br />
+                                <code>!τ</code> an escaping <code>op</code> expecting a
+                                τ-typed continuation
+                            </>
+                        )}
+                        <br />
+                        arrows carry their body&apos;s effect
                     </p>
                     <div className="rules-row">
                         <span className="judgment">p ∘ ϵ = ϵ</span>
-                        <span className="judgment">i ∘ ϵ = i</span>
-                        <span className="judgment">p • ϵ = p</span>
-                        <span className="judgment">i • ϵ = ϵ</span>
+                        {exceptions && <span className="judgment">i ∘ ϵ = i</span>}
+                        {exceptions && <span className="judgment">p • ϵ = p</span>}
+                        {exceptions && <span className="judgment">i • ϵ = ϵ</span>}
                     </div>
                     <p className="rules-dialog-note">
                         ∘: T-App/Neg/Add1/Eq — impure if any part is
-                        <br />
-                        •: T-Try — pure if the handled branch can&apos;t raise
+                        {exceptions && (
+                            <>
+                                <br />
+                                •: T-Try — pure if the handled branch can&apos;t raise
+                            </>
+                        )}
+                        {effects && (
+                            <>
+                                <br />
+                                T-Handle fully discharges its body&apos;s effect (ϵ')
+                            </>
+                        )}
                     </p>
                 </div>
             )}

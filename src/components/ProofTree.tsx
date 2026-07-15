@@ -7,7 +7,7 @@ import {
 } from 'react'
 import type { ProofNode } from '../lambda/typecheck'
 import type { Ctx, Term } from '../lambda/types'
-import { ctxToString, typeToString } from '../lambda/types'
+import { ctxToString, effectToString, typeToString } from '../lambda/types'
 import './ProofTree.css'
 
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
@@ -37,6 +37,7 @@ const HoverCtx = createContext<{
     toggleCollapse: (t: Term) => void
     compact: boolean
     exceptions: boolean
+    effects: boolean
 }>({
     hovered: null,
     setHovered: () => {},
@@ -47,7 +48,8 @@ const HoverCtx = createContext<{
     collapsed: new Set(),
     toggleCollapse: () => {},
     compact: false,
-    exceptions: false
+    exceptions: false,
+    effects: false
 })
 
 // Distinct contexts repeat across many judgments; label them Γ₀, Γ₁, ... in
@@ -202,11 +204,22 @@ function termNodeInner(
             return term.name
         case 'error':
             return 'error'
+        case 'op':
+            return 'op'
         case 'try':
             return (
                 <>
                     try {termNode(term.body, ctx, binderLabels)} with{' '}
                     {termNode(term.handler, ctx, binderLabels)}
+                </>
+            )
+        case 'handle':
+            return (
+                <>
+                    handle {termNode(term.body, ctx, binderLabels)} with {'{'}
+                    {term.x}. {termNode(term.er, ctx, binderLabels)}; {term.k}.{' '}
+                    {termNode(term.eo, ctx, binderLabels)}
+                    {'}'}
                 </>
             )
         case 'abs': {
@@ -222,7 +235,9 @@ function termNodeInner(
         }
         case 'app': {
             const fn =
-                term.fn.kind === 'abs' || term.fn.kind === 'try' ? (
+                term.fn.kind === 'abs' ||
+                term.fn.kind === 'try' ||
+                term.fn.kind === 'handle' ? (
                     <>({termNode(term.fn, ctx, binderLabels)})</>
                 ) : (
                     termNode(term.fn, ctx, binderLabels)
@@ -231,7 +246,8 @@ function termNodeInner(
                 term.arg.kind === 'var' ||
                 term.arg.kind === 'lit' ||
                 term.arg.kind === 'prim' ||
-                term.arg.kind === 'error' ? (
+                term.arg.kind === 'error' ||
+                term.arg.kind === 'op' ? (
                     termNode(term.arg, ctx, binderLabels)
                 ) : (
                     <>({termNode(term.arg, ctx, binderLabels)})</>
@@ -252,7 +268,8 @@ type Labels = {
 }
 
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
-    const { compact, exceptions } = useContext(HoverCtx)
+    const { compact, exceptions, effects } = useContext(HoverCtx)
+    const showEffects = exceptions || effects
     return (
         <span className="judgment">
             {!compact && (
@@ -263,8 +280,8 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
             )}
             {termNode(n.term, n.ctx, labels.binders)}{' '}
             <span className="judgment-separator">:</span>{' '}
-            {typeToString(n.type, exceptions)}
-            {exceptions && ` !${n.effect}`}
+            {typeToString(n.type, showEffects)}
+            {showEffects && ` !${effectToString(n.effect)}`}
         </span>
     )
 }
@@ -285,8 +302,10 @@ function Rule({
         collapsed,
         toggleCollapse,
         compact,
-        exceptions
+        exceptions,
+        effects
     } = useContext(HoverCtx)
+    const showEffects = exceptions || effects
     const active = n.term === hoveredTerm
     const envIndex = labels.envs.get(JSON.stringify(n.ctx))
     const isMergedEnvRoot =
@@ -313,8 +332,8 @@ function Rule({
                     onClick={() => toggleCollapse(n.term)}
                 >
                     D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
-                    {typeToString(n.type, exceptions)}
-                    {exceptions && ` !${n.effect}`}
+                    {typeToString(n.type, showEffects)}
+                    {showEffects && ` !${effectToString(n.effect)}`}
                 </span>
             </div>
         )
@@ -345,8 +364,8 @@ function Rule({
                     <span className="judgment">
                         {termNode(n.term, n.ctx, labels.binders)}{' '}
                         <span className="judgment-separator">:</span>{' '}
-                        {typeToString(n.type, exceptions)}
-                        {exceptions && ` !${n.effect}`}
+                        {typeToString(n.type, showEffects)}
+                        {showEffects && ` !${effectToString(n.effect)}`}
                         {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
                     </span>
                 </div>
@@ -390,13 +409,15 @@ export function ProofTree({
     latex,
     compact,
     setCompact,
-    exceptions
+    exceptions,
+    effects
 }: {
     root: ProofNode
     latex?: string
     compact: boolean
     setCompact: (v: boolean | ((prev: boolean) => boolean)) => void
     exceptions: boolean
+    effects: boolean
 }) {
     const [hovered, setHovered] = useState<string | null>(null)
     const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
@@ -406,7 +427,8 @@ export function ProofTree({
     const toggleCollapse = (t: Term) =>
         setCollapsed((prev) => {
             const next = new Set(prev)
-            next.has(t) ? next.delete(t) : next.add(t)
+            if (next.has(t)) next.delete(t)
+            else next.add(t)
             return next
         })
     const envs = new Map<string, Ctx>()
@@ -434,7 +456,8 @@ export function ProofTree({
                 collapsed,
                 toggleCollapse,
                 compact,
-                exceptions
+                exceptions,
+                effects
             }}
         >
             <div className={`proof-tree-panel${compact ? ' compact' : ''}`}>
@@ -501,7 +524,12 @@ export function ProofTree({
                                                 <td className="environment-table-separator">
                                                     :
                                                 </td>
-                                                <td>{typeToString(type, exceptions)}</td>
+                                                <td>
+                                                    {typeToString(
+                                                        type,
+                                                        exceptions || effects
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
