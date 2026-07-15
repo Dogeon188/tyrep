@@ -184,9 +184,7 @@ code {
     right: 12px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    border-radius: var(--radius-base);
-    background: var(--gray-2);
+    gap: 12px;
 }
 
 .github-link {
@@ -197,6 +195,8 @@ code {
     height: 24px;
     color: var(--muted);
     transition: opacity 0.2s;
+    border-radius: var(--radius-base);
+    background: var(--gray-2);
 }
 
 .github-link:hover {

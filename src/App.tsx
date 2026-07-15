@@ -127,7 +127,7 @@ function App() {
                             <br />
                             <span>
                                 types: <em>type-name</em> | <code>(T)</code> |{' '}
-                                <code>T -&gt; T</code> or <code>T → T</code> (right-assoc)
+                                <code>T -&gt; T</code> (right-assoc)
                             </span>
                         </>
                     }

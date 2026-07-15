@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import './LabeledTextarea.css'
 
 export function LabeledTextarea({
     id,

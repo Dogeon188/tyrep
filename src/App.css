@@ -16,30 +16,13 @@
     margin-bottom: 1rem;
 }
 
-.preset-row,
-.labeled-textarea {
+.preset-row {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     text-align: left;
     font-size: 0.75rem;
     gap: 0.25rem;
-}
-
-.preset-row {
-    flex-direction: row;
-    align-items: center;
-}
-
-.input-row {
-    display: flex;
-    align-items: stretch;
-    gap: 0.75rem;
-    width: 100%;
-}
-
-.input-row textarea {
-    flex: 1;
 }
 
 .inputs textarea,
@@ -85,28 +68,6 @@
 .primitives-toggle[aria-pressed='true'] {
     background: var(--fg);
     color: var(--bg);
-}
-
-.syntax-hint {
-    flex: 0 0 260px;
-    font-size: 0.7rem;
-    color: var(--muted);
-    text-align: left;
-}
-
-.syntax-hint hr {
-    margin: 0.5rem 0;
-    border: none;
-    border-top: 1px solid var(--border);
-    color: var(--muted);
-}
-
-.syntax-hint code {
-    font-family: inherit;
-    font-size: 0.7rem;
-    background: var(--gray-2);
-    padding: 0.1rem 0.3rem;
-    border-radius: var(--radius-small);
 }
 
 .full-form {
