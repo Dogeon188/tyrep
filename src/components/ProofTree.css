@@ -130,6 +130,7 @@
     font-size: 0.7rem;
     white-space: nowrap;
     font-variant-caps: small-caps;
+    cursor: help;
 }
 
 .proof-tree-panel.compact .rule-name {
@@ -265,5 +266,20 @@
 
 .effect-info:hover .effect-tooltip,
 .effect-info:focus .effect-tooltip {
+    display: block;
+}
+
+.rule-tooltip {
+    bottom: auto;
+    top: 100%;
+    left: auto;
+    right: 0;
+    transform: none;
+    margin-bottom: 0;
+    margin-top: 0.3em;
+}
+
+.rule-name:hover .rule-tooltip,
+.rule-name:focus .rule-tooltip {
     display: block;
 }

@@ -6,6 +6,7 @@ import {
     type ReactNode
 } from 'react'
 import type { ProofNode } from '../lambda/typecheck'
+import { RuleDiagram } from './RuleDiagram'
 import { TYVAR } from '../lambda/primitives'
 import type { Ctx, Effect, Term } from '../lambda/types'
 import { ctxToString, effectToString, typeToString } from '../lambda/types'
@@ -294,6 +295,111 @@ function tryEffectFormula(n: ProofNode): string {
               `!${effectToString(handlerNode.effect)}`
 }
 
+// The reference dialog's schematic for each rule, shown (with premises over
+// a line, same as there) as a tooltip on the rule name — so the tree can be
+// read without opening the dialog and cross-referencing it by hand.
+function ruleDiagram(rule: ProofNode['rule'], showEffects: boolean): ReactNode {
+    switch (rule) {
+        case 'T-Var':
+            return (
+                <RuleDiagram
+                    premises={[]}
+                    conclusion={
+                        showEffects ? 'x : T ∈ Γ ⊢ x : T ! p' : 'x : T ∈ Γ ⊢ x : T'
+                    }
+                    name={rule}
+                />
+            )
+        case 'T-Abs':
+            return (
+                <RuleDiagram
+                    premises={[showEffects ? 'Γ, x:T₁ ⊢ e : T₂ ! ϵ' : 'Γ, x:T₁ ⊢ e : T₂']}
+                    conclusion={
+                        showEffects
+                            ? 'Γ ⊢ λx:T₁.e : (T₁ → T₂ !ϵ) ! p'
+                            : 'Γ ⊢ λx:T₁.e : T₁ → T₂'
+                    }
+                    name={rule}
+                />
+            )
+        case 'T-App':
+            return (
+                <RuleDiagram
+                    premises={[
+                        showEffects ? 'Γ ⊢ f : (T₁ → T₂ !ϵ₃) ! ϵ₁' : 'Γ ⊢ f : T₁ → T₂',
+                        showEffects ? 'Γ ⊢ a : T₁ ! ϵ₂' : 'Γ ⊢ a : T₁'
+                    ]}
+                    conclusion={
+                        showEffects ? 'Γ ⊢ f a : T₂ ! (ϵ₁ ∘ ϵ₂ ∘ ϵ₃)' : 'Γ ⊢ f a : T₂'
+                    }
+                    name={rule}
+                />
+            )
+        case 'T-Lit':
+            return (
+                <RuleDiagram
+                    premises={[]}
+                    conclusion={showEffects ? '∅ ⊢ c : type(c) ! p' : '∅ ⊢ c : type(c)'}
+                    name={rule}
+                />
+            )
+        case 'T-Prim':
+            return (
+                <RuleDiagram
+                    premises={[]}
+                    conclusion={
+                        showEffects
+                            ? '∅ ⊢ prim : (builtin-type(prim) !p) ! p'
+                            : '∅ ⊢ prim : builtin-type(prim)'
+                    }
+                    name={rule}
+                />
+            )
+        case 'T-Error':
+            return (
+                <RuleDiagram
+                    premises={[]}
+                    conclusion={<>Γ ⊢ error : τ ! i</>}
+                    name={rule}
+                />
+            )
+        case 'T-Try':
+            return (
+                <RuleDiagram
+                    premises={['Γ ⊢ e₁ : τ ! ϵ₁', 'Γ ⊢ e₂ : τ ! ϵ₂']}
+                    conclusion="Γ ⊢ try e₁ with e₂ : τ ! (ϵ₁ • ϵ₂)"
+                    name={rule}
+                />
+            )
+        case 'T-Op':
+            return (
+                <RuleDiagram premises={[]} conclusion={<>Γ ⊢ op : τ ! τ</>} name={rule} />
+            )
+        case 'T-Handle':
+            return (
+                <RuleDiagram
+                    premises={[
+                        <>Γ ⊢ e : σ ! ϵ'</>,
+                        <>
+                            Γ, x:σ ⊢ e<sub>r</sub> : τ ! ϵ
+                        </>,
+                        <>
+                            Γ, k:ϵ'→τ !ϵ ⊢ e<sub>o</sub> : τ ! ϵ
+                        </>
+                    ]}
+                    conclusion={
+                        <>
+                            Γ ⊢ handle e with {'{'}x.e<sub>r</sub>; k.e
+                            <sub>o</sub>
+                            {'}'} : τ ! ϵ
+                        </>
+                    }
+                    name={rule}
+                />
+            )
+    }
+}
+
 // Only T-App (∘) and T-Try (•) genuinely combine two sub-effects into a new
 // one; every other rule's effect is just copied or looked up, not worth a
 // tooltip.
@@ -315,6 +421,23 @@ function EffectAnnotation({ n }: { n: ProofNode }) {
                 </span>
             )}
         </>
+    )
+}
+
+function RuleName({
+    rule,
+    showEffects
+}: {
+    rule: ProofNode['rule']
+    showEffects: boolean
+}) {
+    return (
+        <span className="rule-name" tabIndex={0}>
+            {rule}
+            <span className="effect-tooltip rule-tooltip">
+                {ruleDiagram(rule, showEffects)}
+            </span>
+        </span>
     )
 }
 
@@ -421,7 +544,7 @@ function Rule({
                     </span>
                 </div>
                 <div className="line">
-                    <span className="rule-name">T-Var</span>
+                    <RuleName rule="T-Var" showEffects={showEffects} />
                     {foldToggle}
                 </div>
                 <Judgment n={n} labels={labels} />
@@ -447,7 +570,7 @@ function Rule({
                 ))}
             </div>
             <div className="line">
-                <span className="rule-name">{n.rule}</span>
+                <RuleName rule={n.rule} showEffects={showEffects} />
                 {foldToggle}
             </div>
             <Judgment n={n} labels={labels} />

@@ -1,17 +1,10 @@
 import { type ReactNode } from 'react'
+import { RuleDiagram } from './RuleDiagram'
 import './ProofTree.css'
 import './ReferenceModal.css'
 
 function Axiom({ conclusion, name }: { conclusion: ReactNode; name: string }) {
-    return (
-        <div className="rule">
-            <div className="premises" />
-            <div className="line">
-                <span className="rule-name">{name}</span>
-            </div>
-            <span className="judgment">{conclusion}</span>
-        </div>
-    )
+    return <RuleDiagram premises={[]} conclusion={conclusion} name={name} />
 }
 
 function Rule1({
@@ -23,17 +16,7 @@ function Rule1({
     conclusion: ReactNode
     name: string
 }) {
-    return (
-        <div className="rule">
-            <div className="premises">
-                <span className="judgment">{premise}</span>
-            </div>
-            <div className="line">
-                <span className="rule-name">{name}</span>
-            </div>
-            <span className="judgment">{conclusion}</span>
-        </div>
-    )
+    return <RuleDiagram premises={[premise]} conclusion={conclusion} name={name} />
 }
 
 function Rule2({
@@ -48,16 +31,11 @@ function Rule2({
     name: string
 }) {
     return (
-        <div className="rule">
-            <div className="premises">
-                <span className="judgment">{premise1}</span>
-                <span className="judgment">{premise2}</span>
-            </div>
-            <div className="line">
-                <span className="rule-name">{name}</span>
-            </div>
-            <span className="judgment">{conclusion}</span>
-        </div>
+        <RuleDiagram
+            premises={[premise1, premise2]}
+            conclusion={conclusion}
+            name={name}
+        />
     )
 }
 
@@ -226,25 +204,25 @@ export function ReferenceModal({
                     {effects && (
                         <>
                             <Axiom conclusion={<>Γ ⊢ op : τ ! τ</>} name="T-Op" />
-                            <div className="rule">
-                                <div className="premises">
-                                    <span className="judgment">Γ ⊢ e : σ ! ϵ'</span>
-                                    <span className="judgment">
+                            <RuleDiagram
+                                premises={[
+                                    <>Γ ⊢ e : σ ! ϵ'</>,
+                                    <>
                                         Γ, x:σ ⊢ e<sub>r</sub> : τ ! ϵ
-                                    </span>
-                                    <span className="judgment">
+                                    </>,
+                                    <>
                                         Γ, k:ϵ'→τ !ϵ ⊢ e<sub>o</sub> : τ ! ϵ
-                                    </span>
-                                </div>
-                                <div className="line">
-                                    <span className="rule-name">T-Handle</span>
-                                </div>
-                                <span className="judgment">
-                                    Γ ⊢ handle e with {'{'}x.e<sub>r</sub>; k.e
-                                    <sub>o</sub>
-                                    {'}'} : τ ! ϵ
-                                </span>
-                            </div>
+                                    </>
+                                ]}
+                                conclusion={
+                                    <>
+                                        Γ ⊢ handle e with {'{'}x.e<sub>r</sub>; k.e
+                                        <sub>o</sub>
+                                        {'}'} : τ ! ϵ
+                                    </>
+                                }
+                                name="T-Handle"
+                            />
                         </>
                     )}
                 </div>
