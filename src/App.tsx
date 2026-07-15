@@ -8,7 +8,8 @@ import { ProofTree } from './components/ProofTree'
 import { TypeRulesModal } from './components/TypeRulesModal'
 import { LabeledTextarea } from './components/LabeledTextarea'
 import { typeToString, termToFullString } from './lambda/types'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { ThemeSwitcher } from './components/ThemeSwitcher'
+import { GithubLink } from './components/GithubLink'
 
 const EXAMPLE = {
     ctx: 'x : b -> b -> b',
@@ -218,7 +219,10 @@ function App() {
 
             <TypeRulesModal dialogRef={rulesDialogRef} primitives={primitives} />
 
-            <ThemeSwitcher />
+            <div className="top-right-bar">
+                <ThemeSwitcher />
+                <GithubLink />
+            </div>
         </>
     )
 }
