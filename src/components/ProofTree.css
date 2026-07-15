@@ -7,7 +7,6 @@
 }
 
 .style-toggle {
-    align-self: flex-end;
     font-family: inherit;
     font-variant: small-caps;
     font-size: 0.7rem;
@@ -28,6 +27,12 @@
 .style-toggle[aria-pressed='true'] {
     background: var(--fg);
     color: var(--bg);
+}
+
+.proof-tree-actions {
+    align-self: flex-end;
+    display: flex;
+    gap: 0.4rem;
 }
 
 .proof-tree {

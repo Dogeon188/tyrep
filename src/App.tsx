@@ -68,7 +68,6 @@ function App() {
         () => (result.root ? proofToLatex(result.root) : ''),
         [result.root]
     )
-    const [copied, setCopied] = useState(false)
 
     return (
         <>
@@ -193,19 +192,7 @@ function App() {
 
                     <div className="latex-panel">
                         <div className="proof-tree-scroll">
-                            <ProofTree root={result.root} />
-                        </div>
-                        <div className="latex-panel-actions">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    navigator.clipboard.writeText(latex)
-                                    setCopied(true)
-                                    setTimeout(() => setCopied(false), 1500)
-                                }}
-                            >
-                                {copied ? 'Copied!' : 'Copy LaTeX'}
-                            </button>
+                            <ProofTree root={result.root} latex={latex} />
                         </div>
                         <textarea
                             className="latex-output"

@@ -368,12 +368,13 @@ function Rule({
     )
 }
 
-export function ProofTree({ root }: { root: ProofNode }) {
+export function ProofTree({ root, latex }: { root: ProofNode; latex?: string }) {
     const [hovered, setHovered] = useState<string | null>(null)
     const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
     const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
     const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
     const [compact, setCompact] = useState(false)
+    const [copied, setCopied] = useState(false)
     const toggleCollapse = (t: Term) =>
         setCollapsed((prev) => {
             const next = new Set(prev)
@@ -408,15 +409,30 @@ export function ProofTree({ root }: { root: ProofNode }) {
             }}
         >
             <div className={`proof-tree-panel${compact ? ' compact' : ''}`}>
-                <button
-                    type="button"
-                    className="style-toggle"
-                    aria-pressed={compact}
-                    title="Toggle compact (sequent-style) judgments"
-                    onClick={() => setCompact((v) => !v)}
-                >
-                    ▷ compact
-                </button>
+                <div className="proof-tree-actions">
+                    <button
+                        type="button"
+                        className="style-toggle"
+                        title="Copy LaTeX to clipboard"
+                        onClick={() => {
+                            if (!latex) return
+                            navigator.clipboard.writeText(latex)
+                            setCopied(true)
+                            setTimeout(() => setCopied(false), 1500)
+                        }}
+                    >
+                        {copied ? 'Copied!' : 'Copy LaTeX'}
+                    </button>
+                    <button
+                        type="button"
+                        className="style-toggle"
+                        aria-pressed={compact}
+                        title="Toggle compact (sequent-style) judgments"
+                        onClick={() => setCompact((v) => !v)}
+                    >
+                        ▷ Compact
+                    </button>
+                </div>
                 <div className="proof-tree">
                     <Rule n={root} labels={labels} />
                 </div>
