@@ -6,6 +6,7 @@ import { proofToLatex } from './lambda/latex'
 import { ProofTree } from './components/ProofTree'
 import { ReferenceModal } from './components/ReferenceModal'
 import { LabeledTextarea } from './components/LabeledTextarea'
+import { CtxHint, TermHint } from './components/InputHints'
 import { FullForm } from './components/FullForm'
 import {
     typeToString,
@@ -15,118 +16,7 @@ import {
 } from './lambda/types'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { GithubLink } from './components/GithubLink'
-
-const EXAMPLE = {
-    ctx: 'x : b -> b -> b',
-    term: 'λx. λy:b. x y y'
-}
-
-const PRESETS = [
-    {
-        name: 'Identity',
-        ctx: '',
-        term: 'λx:b. x',
-        primitives: false,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Const',
-        ctx: '',
-        term: 'λx:b. λy:b. x',
-        primitives: false,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Higher-Order',
-        ctx: 'x : b -> b -> b',
-        term: 'λx. λy:b. x y y',
-        primitives: false,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Bool/Int Primitives',
-        ctx: '',
-        term: 'eq (add1 1) (add1 (add1 0))',
-        primitives: true,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Variable Shadowing',
-        ctx: 'x : Bool',
-        term: 'λx:Bool. λx:Int. x',
-        primitives: true,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Arrow Domain',
-        ctx: 'x : (b -> b) -> b\ny : b',
-        term: 'x (λy. y)',
-        primitives: false,
-        exceptions: false,
-        effects: false
-    },
-    {
-        name: 'Exceptions: Handled',
-        ctx: '',
-        term: 'try ((λx:Int. error) 1) with 2',
-        primitives: true,
-        exceptions: true,
-        effects: false
-    },
-    {
-        name: 'Exceptions: Unhandled',
-        ctx: '',
-        term: 'add1 error',
-        primitives: true,
-        exceptions: true,
-        effects: false
-    },
-    {
-        name: 'Exceptions: Nested Try',
-        ctx: '',
-        term: 'neg (try (eq error 0) with false)',
-        primitives: true,
-        exceptions: true,
-        effects: false
-    },
-    {
-        name: 'Exceptions: Handler Not Taken',
-        ctx: '',
-        term: 'try 3 with error',
-        primitives: true,
-        exceptions: true,
-        effects: false
-    },
-    {
-        name: 'Effects: Resolved',
-        ctx: '',
-        term: 'handle (eq 1 op) with {x. neg x; k. (λx:Bool. x) (k 0)}',
-        primitives: true,
-        exceptions: true,
-        effects: true
-    },
-    {
-        name: 'Effects: Unhandled',
-        ctx: '',
-        term: 'add1 op',
-        primitives: true,
-        exceptions: true,
-        effects: true
-    },
-    {
-        name: 'Effects: Mismatched Continuation',
-        ctx: '',
-        term: 'handle (neg op) with {x. x; k. k 2}',
-        primitives: true,
-        exceptions: true,
-        effects: true
-    }
-]
+import { EXAMPLE, PRESETS } from './presets'
 
 function App() {
     const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
@@ -236,18 +126,7 @@ function App() {
                     label="Context (Γ₀)"
                     value={ctxSrc}
                     onChange={setCtxSrc}
-                    hint={
-                        <>
-                            <span>
-                                one binding per line/comma: <code>x : T</code>
-                            </span>
-                            <br />
-                            <span>
-                                types: <em>type-name</em> | <code>(T)</code> |{' '}
-                                <code>T -&gt; T</code> (right-assoc)
-                            </span>
-                        </>
-                    }
+                    hint={<CtxHint />}
                 />
                 <LabeledTextarea
                     id="term-input"
@@ -255,69 +134,11 @@ function App() {
                     value={termSrc}
                     onChange={setTermSrc}
                     hint={
-                        <>
-                            <span>
-                                lambda: <code>λx.e</code> or <code>\x.e</code> or{' '}
-                                <code>fn x =&gt; e</code>
-                            </span>
-                            <br />
-                            <span>
-                                annotated lambda: <code>λx:T. e</code>
-                            </span>
-                            <br />
-                            <span>inline annotation wins Γ if both are given</span>
-                            <hr />
-                            <span>
-                                application: <code>f x</code>
-                            </span>
-                            <br />
-                            <span>
-                                arrow type: <code>T -&gt; T</code> or <code>T → T</code>
-                            </span>
-                            {primitives && (
-                                <>
-                                    <hr />
-                                    <span>
-                                        literals: <code>true</code> | <code>false</code> |{' '}
-                                        <code>0</code>, <code>1</code>, ...
-                                    </span>
-                                    <br />
-                                    <span>
-                                        primitives: <code>neg</code> | <code>add1</code> |{' '}
-                                        <code>eq</code>
-                                    </span>
-                                </>
-                            )}
-                            {exceptions && (
-                                <>
-                                    <hr />
-                                    <span>
-                                        raise: <code>error</code>
-                                    </span>
-                                    <br />
-                                    <span>
-                                        handle: <code>try e1 with e2</code>
-                                    </span>
-                                </>
-                            )}
-                            {effects && (
-                                <>
-                                    <hr />
-                                    <span>
-                                        operation: <code>op</code>
-                                    </span>
-                                    <br />
-                                    <span>
-                                        handle:{' '}
-                                        <code>
-                                            handle e with {'{'}x. e<sub>r</sub>; k. e
-                                            <sub>o</sub>
-                                            {'}'}
-                                        </code>
-                                    </span>
-                                </>
-                            )}
-                        </>
+                        <TermHint
+                            primitives={primitives}
+                            exceptions={exceptions}
+                            effects={effects}
+                        />
                     }
                 >
                     {fullForm && <FullForm text={fullForm} />}
