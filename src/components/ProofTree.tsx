@@ -368,12 +368,21 @@ function Rule({
     )
 }
 
-export function ProofTree({ root, latex }: { root: ProofNode; latex?: string }) {
+export function ProofTree({
+    root,
+    latex,
+    compact,
+    setCompact
+}: {
+    root: ProofNode
+    latex?: string
+    compact: boolean
+    setCompact: (v: boolean | ((prev: boolean) => boolean)) => void
+}) {
     const [hovered, setHovered] = useState<string | null>(null)
     const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
     const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
     const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
-    const [compact, setCompact] = useState(false)
     const [copied, setCopied] = useState(false)
     const toggleCollapse = (t: Term) =>
         setCollapsed((prev) => {

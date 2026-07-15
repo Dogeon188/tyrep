@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import './ProofTree.css'
-import './TypeRulesModal.css'
+import './ReferenceModal.css'
 
 function Axiom({ conclusion, name }: { conclusion: ReactNode; name: string }) {
     return (
@@ -61,12 +61,14 @@ function Rule2({
     )
 }
 
-export function TypeRulesModal({
+export function ReferenceModal({
     dialogRef,
-    primitives
+    primitives,
+    compact
 }: {
     dialogRef: React.RefObject<HTMLDialogElement | null>
     primitives: boolean
+    compact: boolean
 }) {
     return (
         <dialog
@@ -78,7 +80,7 @@ export function TypeRulesModal({
         >
             <form method="dialog">
                 <div className="rules-dialog-header">
-                    <span>Allowed type rules</span>
+                    <span>Reference</span>
                     <button type="submit" aria-label="Close">
                         ✕
                     </button>
@@ -123,6 +125,23 @@ export function TypeRulesModal({
                     </>
                 )}
             </div>
+            {compact && (
+                <>
+                    <div className="rules-dialog-subhead">Uncurried Types</div>
+                    <p className="rules-dialog-note">
+                        High-order functions can be seen as a normal function whose input is a
+                        Cartesian product of types, e.g. <code>A → B → C</code> to <code>A × B → C</code>. See{' '}
+                        <a
+                            href="https://en.wikipedia.org/wiki/Currying"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Wikipedia: Currying
+                        </a>
+                        .
+                    </p>
+                </>
+            )}
         </dialog>
     )
 }

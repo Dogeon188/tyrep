@@ -17,6 +17,23 @@ export function typeToString(t: Type): string {
     return `${from} → ${typeToString(t.to)}`
 }
 
+// Uncurried form, e.g. `a -> b -> c` becomes `(a × b) → c`: each curried arrow
+// chain's arguments are grouped as a product, recursively, with the product
+// always parenthesized (fully parenthesized, mirroring termToFullString).
+export function typeToUncurriedString(t: Type): string {
+    if (t.kind === 'base') return t.name
+    const args: Type[] = []
+    let ret: Type = t
+    while (ret.kind === 'arrow') {
+        args.push(ret.from)
+        ret = ret.to
+    }
+    const argStrs = args.map((a) =>
+        a.kind === 'arrow' ? `(${typeToUncurriedString(a)})` : typeToUncurriedString(a)
+    )
+    return `(${argStrs.join(' × ')}) → ${typeToUncurriedString(ret)}`
+}
+
 export function termToString(t: Term): string {
     switch (t.kind) {
         case 'var':

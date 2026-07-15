@@ -1,14 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
-import { Calligraph } from 'calligraph'
 import './App.css'
 import { parseCtxString, parseTermString } from './lambda/parser'
 import { derive } from './lambda/typecheck'
 import { proofToLatex } from './lambda/latex'
 import { ProofTree } from './components/ProofTree'
-import { TypeRulesModal } from './components/TypeRulesModal'
+import { ReferenceModal } from './components/ReferenceModal'
 import { LabeledTextarea } from './components/LabeledTextarea'
 import { FullForm } from './components/FullForm'
-import { typeToString, termToFullString } from './lambda/types'
+import { typeToString, typeToUncurriedString, termToFullString } from './lambda/types'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { GithubLink } from './components/GithubLink'
 
@@ -44,6 +43,7 @@ function App() {
     const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
     const [termSrc, setTermSrc] = useState(EXAMPLE.term)
     const [primitives, setPrimitives] = useState(false)
+    const [compact, setCompact] = useState(false)
     const rulesDialogRef = useRef<HTMLDialogElement>(null)
 
     const result = useMemo(() => {
@@ -111,7 +111,7 @@ function App() {
                         className="primitives-toggle"
                         onClick={() => rulesDialogRef.current?.showModal()}
                     >
-                        Type Rules
+                        Reference
                     </button>
                 </div>
                 <LabeledTextarea
@@ -167,7 +167,7 @@ function App() {
                                     <br />
                                     <span>
                                         primitives: <code>neg</code> | <code>add1</code> |{' '}
-                                        <code>eq</code> — see Type Rules
+                                        <code>eq</code> — see Reference
                                     </span>
                                 </>
                             )}
@@ -184,12 +184,23 @@ function App() {
                 <div className="output">
                     <div className="result-type">
                         Result type:{' '}
-                        <Calligraph>{typeToString(result.root.type)}</Calligraph>
+                        <FullForm
+                            text={
+                                compact
+                                    ? typeToUncurriedString(result.root.type)
+                                    : typeToString(result.root.type)
+                            }
+                        />
                     </div>
 
                     <div className="latex-panel">
                         <div className="proof-tree-scroll">
-                            <ProofTree root={result.root} latex={latex} />
+                            <ProofTree
+                                root={result.root}
+                                latex={latex}
+                                compact={compact}
+                                setCompact={setCompact}
+                            />
                         </div>
                         <textarea
                             className="latex-output"
@@ -201,7 +212,11 @@ function App() {
                 </div>
             )}
 
-            <TypeRulesModal dialogRef={rulesDialogRef} primitives={primitives} />
+            <ReferenceModal
+                dialogRef={rulesDialogRef}
+                primitives={primitives}
+                compact={compact}
+            />
 
             <div className="top-right-bar">
                 <ThemeSwitcher />

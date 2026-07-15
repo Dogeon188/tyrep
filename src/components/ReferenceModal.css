@@ -46,3 +46,11 @@
   justify-content: center;
   gap: 1rem 1.5rem;
 }
+
+.rules-dialog-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  max-width: 40rem;
+  line-height: 1.4;
+  margin: 0 auto;
+}
