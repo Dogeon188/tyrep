@@ -29,17 +29,23 @@ const varColor = (i: number) => `hsl(${(i * 137.508 + 180) % 360} 70% 45%)`
 const HoverCtx = createContext<{
     hovered: string | null
     setHovered: (key: string | null) => void
+    hoveredEnv: number | null
+    setHoveredEnv: (i: number | null) => void
     hoveredTerm: Term | null
     setHoveredTerm: (t: Term | null) => void
     collapsed: Set<Term>
     toggleCollapse: (t: Term) => void
+    compact: boolean
 }>({
     hovered: null,
     setHovered: () => {},
+    hoveredEnv: null,
+    setHoveredEnv: () => {},
     hoveredTerm: null,
     setHoveredTerm: () => {},
     collapsed: new Set(),
-    toggleCollapse: () => {}
+    toggleCollapse: () => {},
+    compact: false
 })
 
 // Distinct contexts repeat across many judgments; label them Γ₀, Γ₁, ... in
@@ -67,14 +73,11 @@ function collectCollapseIndices(
 }
 
 function EnvBadge({ i }: { i: number }) {
-    const { hovered, setHovered } = useContext(HoverCtx)
-    const key = `env:${i}`
+    const { hoveredEnv } = useContext(HoverCtx)
     return (
         <span
-            className={`env-badge${hovered === key ? ' active' : ''}`}
+            className={`env-badge${hoveredEnv === i ? ' active' : ''}`}
             style={{ '--env-color': envColor(i) } as CSSProperties}
-            onMouseEnter={() => setHovered(key)}
-            onMouseLeave={() => setHovered(null)}
         >
             Γ{subscript(i)}
         </span>
@@ -253,22 +256,59 @@ type Labels = {
 }
 
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
+    const { compact } = useContext(HoverCtx)
     return (
         <span className="judgment">
-            {envNode(n.ctx, labels.envs)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
-            {typeToString(n.type)}
+            {!compact && (
+                <>
+                    {envNode(n.ctx, labels.envs)}{' '}
+                    <span className="judgment-separator">⊢</span>{' '}
+                </>
+            )}
+            {termNode(n.term, n.ctx, labels.binders)}{' '}
+            <span className="judgment-separator">:</span> {typeToString(n.type)}
         </span>
     )
 }
 
-function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
-    const { hoveredTerm, collapsed, toggleCollapse } = useContext(HoverCtx)
+function Rule({
+    n,
+    labels,
+    parentEnvIndex = null
+}: {
+    n: ProofNode
+    labels: Labels
+    parentEnvIndex?: number | null
+}) {
+    const {
+        hoveredTerm,
+        hoveredEnv,
+        setHoveredTerm,
+        collapsed,
+        toggleCollapse,
+        compact
+    } = useContext(HoverCtx)
     const active = n.term === hoveredTerm
+    const envIndex = labels.envs.get(JSON.stringify(n.ctx))
+    const isMergedEnvRoot =
+        compact && envIndex !== undefined && envIndex !== parentEnvIndex
+    const envVisible = isMergedEnvRoot && hoveredEnv === envIndex
+    const envStyle = isMergedEnvRoot
+        ? ({ '--env-color': envColor(envIndex) } as CSSProperties)
+        : undefined
 
     if (collapsed.has(n.term)) {
         const idx = labels.collapseIndices.get(n.term)!
         return (
-            <div className={`rule collapsed${active ? ' active' : ''}`}>
+            <div
+                className={`rule collapsed${active ? ' active' : ''}${
+                    isMergedEnvRoot
+                        ? ` compact-env${envVisible ? ' env-visible' : ''}`
+                        : ''
+                }`}
+                style={envStyle}
+                onMouseLeave={() => setHoveredTerm(null)}
+            >
                 <span
                     className="judgment collapse-toggle"
                     onClick={() => toggleCollapse(n.term)}
@@ -292,11 +332,21 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
 
     if (n.rule === 'T-Var') {
         return (
-            <div className={`rule${active ? ' active' : ''}`}>
+            <div
+                className={`rule${active ? ' active' : ''}${
+                    isMergedEnvRoot
+                        ? ` compact-env${envVisible ? ' env-visible' : ''}`
+                        : ''
+                }`}
+                style={envStyle}
+                onMouseLeave={() => setHoveredTerm(null)}
+            >
                 <div className="premises">
                     <span className="judgment">
-                        {termNode(n.term, n.ctx, labels.binders)} : {typeToString(n.type)}{' '}
-                        ∈ {envNode(n.ctx, labels.envs)}
+                        {termNode(n.term, n.ctx, labels.binders)}{' '}
+                        <span className="judgment-separator">:</span>{' '}
+                        {typeToString(n.type)}
+                        {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
                     </span>
                 </div>
                 <div className="line">
@@ -308,10 +358,21 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
         )
     }
     return (
-        <div className={`rule${active ? ' active' : ''}`}>
+        <div
+            className={`rule${active ? ' active' : ''}${
+                isMergedEnvRoot ? ` compact-env${envVisible ? ' env-visible' : ''}` : ''
+            }`}
+            style={envStyle}
+            onMouseLeave={() => setHoveredTerm(null)}
+        >
             <div className="premises">
                 {n.premises.map((p, i) => (
-                    <Rule key={i} n={p} labels={labels} />
+                    <Rule
+                        key={i}
+                        n={p}
+                        labels={labels}
+                        parentEnvIndex={envIndex ?? parentEnvIndex}
+                    />
                 ))}
             </div>
             <div className="line">
@@ -325,8 +386,10 @@ function Rule({ n, labels }: { n: ProofNode; labels: Labels }) {
 
 export function ProofTree({ root }: { root: ProofNode }) {
     const [hovered, setHovered] = useState<string | null>(null)
+    const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
     const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
     const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
+    const [compact, setCompact] = useState(false)
     const toggleCollapse = (t: Term) =>
         setCollapsed((prev) => {
             const next = new Set(prev)
@@ -351,20 +414,37 @@ export function ProofTree({ root }: { root: ProofNode }) {
             value={{
                 hovered,
                 setHovered,
+                hoveredEnv,
+                setHoveredEnv,
                 hoveredTerm,
                 setHoveredTerm,
                 collapsed,
-                toggleCollapse
+                toggleCollapse,
+                compact
             }}
         >
-            <div className="proof-tree-panel" onMouseLeave={() => setHoveredTerm(null)}>
+            <div className={`proof-tree-panel${compact ? ' compact' : ''}`}>
+                <button
+                    type="button"
+                    className="style-toggle"
+                    aria-pressed={compact}
+                    title="Toggle compact (sequent-style) judgments"
+                    onClick={() => setCompact((v) => !v)}
+                >
+                    ▷ compact
+                </button>
                 <div className="proof-tree">
                     <Rule n={root} labels={labels} />
                 </div>
                 {entries.length > 0 && (
                     <div className="environment-legend">
                         {entries.map((ctx, i) => (
-                            <div key={i} className="environment-entry">
+                            <div
+                                key={i}
+                                className="environment-entry"
+                                onMouseEnter={() => setHoveredEnv(i)}
+                                onMouseLeave={() => setHoveredEnv(null)}
+                            >
                                 <EnvBadge i={i} /> = {ctxNode(ctx, labels.binders)}
                             </div>
                         ))}
