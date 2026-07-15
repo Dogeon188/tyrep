@@ -1,0 +1,16 @@
+.full-form {
+    font-size: 0.8rem;
+    color: #666;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.full-form .bracket-hint {
+    color: color-mix(in srgb, var(--bracket-color) 55%, var(--muted));
+}
+
+.full-form .paren-match {
+    color: var(--bracket-color);
+    background: color-mix(in srgb, var(--bracket-color) 15%, transparent);
+    border-radius: 2px;
+}

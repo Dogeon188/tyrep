@@ -7,6 +7,7 @@ import { proofToLatex } from './lambda/latex'
 import { ProofTree } from './components/ProofTree'
 import { TypeRulesModal } from './components/TypeRulesModal'
 import { LabeledTextarea } from './components/LabeledTextarea'
+import { FullForm } from './components/FullForm'
 import { typeToString, termToFullString } from './lambda/types'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { GithubLink } from './components/GithubLink'
@@ -173,11 +174,7 @@ function App() {
                         </>
                     }
                 >
-                    {fullForm && (
-                        <div className="full-form">
-                            <Calligraph>{fullForm}</Calligraph>
-                        </div>
-                    )}
+                    {fullForm && <FullForm text={fullForm} />}
                 </LabeledTextarea>
             </div>
 
