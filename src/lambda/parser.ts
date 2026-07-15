@@ -40,11 +40,14 @@ class TokenStream {
 const isIdent = (t: string | undefined) => !!t && /^[A-Za-z_][A-Za-z0-9_]*$/.test(t)
 
 // Type := Arrow ; Arrow := Atom ("->" Arrow)? ; Atom := IDENT | "(" Type ")"
+// User-written types never spell out an effect (exn.pdf's Γ boxes don't
+// associate one either) — arrows parsed from source are 'p' by construction;
+// 'i' only ever comes from typecheck.ts inferring it from an `error`.
 function parseType(s: TokenStream): Type {
     const atom = parseTypeAtom(s)
     if (s.peek() === '->') {
         s.next()
-        return { kind: 'arrow', from: atom, to: parseType(s) }
+        return { kind: 'arrow', from: atom, to: parseType(s), effect: 'p' }
     }
     return atom
 }
@@ -68,7 +71,7 @@ export function parseTypeString(src: string): Type {
     return t
 }
 
-export type ParseOptions = { primitives?: boolean }
+export type ParseOptions = { primitives?: boolean; exceptions?: boolean }
 
 const isNumber = (t: string | undefined) => !!t && /^\d+$/.test(t)
 // atoms these bind to when primitives are enabled — otherwise plain idents
@@ -76,6 +79,11 @@ const BOOL_LITS: Record<string, boolean> = { true: true, false: false }
 
 // Term := Abs | App ; Abs := "λ" IDENT (":" Type)? "." Term ; App := Atom+ ; Atom := IDENT | NUMBER | "(" Term ")"
 // note: "\" and "fn" are tokenizer aliases for "λ", "=>"/"⇒" for "." — see TERM_ALIASES
+// try/with are only reserved when exceptions are enabled, so plain lambda
+// calculus keeps them free as ordinary variable names.
+const isReservedWord = (opts: ParseOptions, t: string | undefined) =>
+    !!opts.exceptions && (t === 'try' || t === 'with')
+
 function parseTerm(s: TokenStream, opts: ParseOptions): Term {
     if (s.peek() === 'λ') {
         s.next()
@@ -89,10 +97,18 @@ function parseTerm(s: TokenStream, opts: ParseOptions): Term {
         s.expect('.')
         return { kind: 'abs', param, paramType, body: parseTerm(s, opts) }
     }
+    if (opts.exceptions && s.peek() === 'try') {
+        s.next()
+        const body = parseTerm(s, opts)
+        const w = s.next()
+        if (w !== 'with') throw new Error(`expected "with" but got "${w}"`)
+        const handler = parseTerm(s, opts)
+        return { kind: 'try', body, handler }
+    }
     let term = parseTermAtom(s, opts)
     while (
         s.peek() === '(' ||
-        isIdent(s.peek()) ||
+        (isIdent(s.peek()) && !isReservedWord(opts, s.peek())) ||
         (opts.primitives && isNumber(s.peek()))
     ) {
         term = { kind: 'app', fn: term, arg: parseTermAtom(s, opts) }
@@ -107,10 +123,15 @@ function parseTermAtom(s: TokenStream, opts: ParseOptions): Term {
         s.expect(')')
         return t
     }
+    if (opts.exceptions && s.peek() === 'error') {
+        s.next()
+        return { kind: 'error' }
+    }
     if (opts.primitives && isNumber(s.peek())) {
         return { kind: 'lit', type: 'Int', value: Number(s.next()) }
     }
     const name = s.next()
+    if (isReservedWord(opts, name)) throw new Error(`unexpected reserved word "${name}"`)
     if (opts.primitives && name in BOOL_LITS) {
         return { kind: 'lit', type: 'Bool', value: BOOL_LITS[name] }
     }

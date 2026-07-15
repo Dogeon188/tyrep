@@ -42,7 +42,8 @@ describe('derive', () => {
         expect(neg.type).toEqual({
             kind: 'arrow',
             from: { kind: 'base', name: 'Bool' },
-            to: { kind: 'base', name: 'Bool' }
+            to: { kind: 'base', name: 'Bool' },
+            effect: 'p'
         })
         const applied = derive([], parseTermString('add1 41', { primitives: true }))
         expect(applied.type).toEqual({ kind: 'base', name: 'Int' })
@@ -59,5 +60,47 @@ describe('derive', () => {
         expect(() =>
             derive([], parseTermString('eq 1 true', { primitives: true }))
         ).toThrow(TypeError2)
+    })
+})
+
+describe('derive — exceptions (exn.pdf §6/Appendix B)', () => {
+    const opts = { primitives: true, exceptions: true }
+
+    test('error unifies with any type, and propagates the i effect through app/abs', () => {
+        // exn.pdf worked example: try ((λx. error) 1) with 2 : int ! p
+        const root = derive([], parseTermString('try ((λx:Int. error) 1) with 2', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Int' })
+        expect(root.effect).toBe('p')
+        const app = root.premises[0]
+        expect(app.effect).toBe('i')
+    })
+
+    test('try is pure when the handled branch is pure, even if the handler is not', () => {
+        // exn.pdf worked example: try 3 with error : int ! i (imprecise system) —
+        // our precise (Appendix B) system instead gets try 3 with error : int ! p
+        const root = derive([], parseTermString('try 3 with error', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Int' })
+        expect(root.effect).toBe('p')
+    })
+
+    test('bare error has no handler and is impure', () => {
+        const root = derive([], parseTermString('add1 error', opts))
+        expect(root.type).toEqual({ kind: 'base', name: 'Int' })
+        expect(root.effect).toBe('i')
+    })
+
+    test('mismatched try branches are a type error', () => {
+        expect(() => derive([], parseTermString('try 3 with true', opts))).toThrow(
+            TypeError2
+        )
+    })
+
+    test('"error"/"try"/"with" stay usable as identifiers when exceptions are off', () => {
+        expect(derive([], parseTermString('λerror:Int. error')).type).toEqual({
+            kind: 'arrow',
+            from: { kind: 'base', name: 'Int' },
+            to: { kind: 'base', name: 'Int' },
+            effect: 'p'
+        })
     })
 })

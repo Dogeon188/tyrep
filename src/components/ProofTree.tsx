@@ -36,6 +36,7 @@ const HoverCtx = createContext<{
     collapsed: Set<Term>
     toggleCollapse: (t: Term) => void
     compact: boolean
+    exceptions: boolean
 }>({
     hovered: null,
     setHovered: () => {},
@@ -45,7 +46,8 @@ const HoverCtx = createContext<{
     setHoveredTerm: () => {},
     collapsed: new Set(),
     toggleCollapse: () => {},
-    compact: false
+    compact: false,
+    exceptions: false
 })
 
 // Distinct contexts repeat across many judgments; label them Γ₀, Γ₁, ... in
@@ -198,6 +200,15 @@ function termNodeInner(
             return String(term.value)
         case 'prim':
             return term.name
+        case 'error':
+            return 'error'
+        case 'try':
+            return (
+                <>
+                    try {termNode(term.body, ctx, binderLabels)} with{' '}
+                    {termNode(term.handler, ctx, binderLabels)}
+                </>
+            )
         case 'abs': {
             const extended = paramCtxExtension(ctx, term)
             const label =
@@ -211,7 +222,7 @@ function termNodeInner(
         }
         case 'app': {
             const fn =
-                term.fn.kind === 'abs' ? (
+                term.fn.kind === 'abs' || term.fn.kind === 'try' ? (
                     <>({termNode(term.fn, ctx, binderLabels)})</>
                 ) : (
                     termNode(term.fn, ctx, binderLabels)
@@ -219,7 +230,8 @@ function termNodeInner(
             const arg =
                 term.arg.kind === 'var' ||
                 term.arg.kind === 'lit' ||
-                term.arg.kind === 'prim' ? (
+                term.arg.kind === 'prim' ||
+                term.arg.kind === 'error' ? (
                     termNode(term.arg, ctx, binderLabels)
                 ) : (
                     <>({termNode(term.arg, ctx, binderLabels)})</>
@@ -240,7 +252,7 @@ type Labels = {
 }
 
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
-    const { compact } = useContext(HoverCtx)
+    const { compact, exceptions } = useContext(HoverCtx)
     return (
         <span className="judgment">
             {!compact && (
@@ -250,7 +262,9 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
                 </>
             )}
             {termNode(n.term, n.ctx, labels.binders)}{' '}
-            <span className="judgment-separator">:</span> {typeToString(n.type)}
+            <span className="judgment-separator">:</span>{' '}
+            {typeToString(n.type, exceptions)}
+            {exceptions && ` !${n.effect}`}
         </span>
     )
 }
@@ -270,7 +284,8 @@ function Rule({
         setHoveredTerm,
         collapsed,
         toggleCollapse,
-        compact
+        compact,
+        exceptions
     } = useContext(HoverCtx)
     const active = n.term === hoveredTerm
     const envIndex = labels.envs.get(JSON.stringify(n.ctx))
@@ -298,7 +313,8 @@ function Rule({
                     onClick={() => toggleCollapse(n.term)}
                 >
                     D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
-                    {typeToString(n.type)}
+                    {typeToString(n.type, exceptions)}
+                    {exceptions && ` !${n.effect}`}
                 </span>
             </div>
         )
@@ -329,7 +345,8 @@ function Rule({
                     <span className="judgment">
                         {termNode(n.term, n.ctx, labels.binders)}{' '}
                         <span className="judgment-separator">:</span>{' '}
-                        {typeToString(n.type)}
+                        {typeToString(n.type, exceptions)}
+                        {exceptions && ` !${n.effect}`}
                         {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
                     </span>
                 </div>
@@ -372,12 +389,14 @@ export function ProofTree({
     root,
     latex,
     compact,
-    setCompact
+    setCompact,
+    exceptions
 }: {
     root: ProofNode
     latex?: string
     compact: boolean
     setCompact: (v: boolean | ((prev: boolean) => boolean)) => void
+    exceptions: boolean
 }) {
     const [hovered, setHovered] = useState<string | null>(null)
     const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
@@ -414,7 +433,8 @@ export function ProofTree({
                 setHoveredTerm,
                 collapsed,
                 toggleCollapse,
-                compact
+                compact,
+                exceptions
             }}
         >
             <div className={`proof-tree-panel${compact ? ' compact' : ''}`}>
@@ -481,7 +501,7 @@ export function ProofTree({
                                                 <td className="environment-table-separator">
                                                     :
                                                 </td>
-                                                <td>{typeToString(type)}</td>
+                                                <td>{typeToString(type, exceptions)}</td>
                                             </tr>
                                         ))}
                                     </tbody>

@@ -64,10 +64,12 @@ function Rule2({
 export function ReferenceModal({
     dialogRef,
     primitives,
+    exceptions,
     compact
 }: {
     dialogRef: React.RefObject<HTMLDialogElement | null>
     primitives: boolean
+    exceptions: boolean
     compact: boolean
 }) {
     return (
@@ -87,50 +89,158 @@ export function ReferenceModal({
                 </div>
             </form>
 
-            {primitives && (
+            {(primitives || exceptions) && (
                 <div className="rules-dialog-section">
                     <div className="rules-dialog-subhead">Base types</div>
                     <div className="rules-row">
-                        <span className="judgment">Bool</span>
-                        <span className="judgment">Int</span>
+                        {primitives && <span className="judgment">Bool</span>}
+                        {primitives && <span className="judgment">Int</span>}
+                        {exceptions && <span className="judgment">⊥</span>}
                     </div>
+                    {exceptions && (
+                        <p className="rules-dialog-note">
+                            <code>⊥</code>: type of <code>error</code>, equal to any type
+                        </p>
+                    )}
                 </div>
             )}
 
-            <div className="rules-dialog-subhead">Rules</div>
-            <div className="rules-row">
-                <Axiom conclusion={<>x : T ∈ Γ ⊢ x : T</>} name="T-Var" />
-                <Rule1
-                    premise="Γ, x:T₁ ⊢ e : T₂"
-                    conclusion="Γ ⊢ λx:T₁.e : T₁ → T₂"
-                    name="T-Abs"
-                />
-                <Rule2
-                    premise1="Γ ⊢ f : T₁ → T₂"
-                    premise2="Γ ⊢ a : T₁"
-                    conclusion="Γ ⊢ f a : T₂"
-                    name="T-App"
-                />
-                {primitives && (
-                    <>
-                        <Axiom conclusion={<>∅ ⊢ true : Bool</>} name="T-Lit" />
-                        <Axiom conclusion={<>∅ ⊢ false : Bool</>} name="T-Lit" />
-                        <Axiom
-                            conclusion={<>∅ ⊢ n : Int (n = 0, 1, 2, ...)</>}
-                            name="T-Lit"
-                        />
-                        <Axiom conclusion={<>∅ ⊢ neg : Bool → Bool</>} name="T-Prim" />
-                        <Axiom conclusion={<>∅ ⊢ add1 : Int → Int</>} name="T-Prim" />
-                        <Axiom conclusion={<>∅ ⊢ eq : α → α → Bool</>} name="T-Prim" />
-                    </>
-                )}
+            <div className="rules-dialog-section">
+                <div className="rules-dialog-subhead">Rules</div>
+                <div className="rules-row">
+                    <Axiom
+                        conclusion={
+                            exceptions ? (
+                                <>x : T ∈ Γ ⊢ x : T ! p</>
+                            ) : (
+                                <>x : T ∈ Γ ⊢ x : T</>
+                            )
+                        }
+                        name="T-Var"
+                    />
+                    <Rule1
+                        premise={exceptions ? 'Γ, x:T₁ ⊢ e : T₂ ! ϵ' : 'Γ, x:T₁ ⊢ e : T₂'}
+                        conclusion={
+                            exceptions
+                                ? 'Γ ⊢ λx:T₁.e : (T₁ → T₂ !ϵ) ! p'
+                                : 'Γ ⊢ λx:T₁.e : T₁ → T₂'
+                        }
+                        name="T-Abs"
+                    />
+                    <Rule2
+                        premise1={
+                            exceptions ? 'Γ ⊢ f : (T₁ → T₂ !ϵ₃) ! ϵ₁' : 'Γ ⊢ f : T₁ → T₂'
+                        }
+                        premise2={exceptions ? 'Γ ⊢ a : T₁ ! ϵ₂' : 'Γ ⊢ a : T₁'}
+                        conclusion={
+                            exceptions ? 'Γ ⊢ f a : T₂ ! (ϵ₁ ∘ ϵ₂ ∘ ϵ₃)' : 'Γ ⊢ f a : T₂'
+                        }
+                        name="T-App"
+                    />
+                    {primitives && (
+                        <>
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ true : Bool ! p</>
+                                    ) : (
+                                        <>∅ ⊢ true : Bool</>
+                                    )
+                                }
+                                name="T-Lit"
+                            />
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ false : Bool ! p</>
+                                    ) : (
+                                        <>∅ ⊢ false : Bool</>
+                                    )
+                                }
+                                name="T-Lit"
+                            />
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ n : Int ! p (n = 0, 1, 2, ...)</>
+                                    ) : (
+                                        <>∅ ⊢ n : Int (n = 0, 1, 2, ...)</>
+                                    )
+                                }
+                                name="T-Lit"
+                            />
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ neg : (Bool → Bool !p) ! p</>
+                                    ) : (
+                                        <>∅ ⊢ neg : Bool → Bool</>
+                                    )
+                                }
+                                name="T-Prim"
+                            />
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ add1 : (Int → Int !p) ! p</>
+                                    ) : (
+                                        <>∅ ⊢ add1 : Int → Int</>
+                                    )
+                                }
+                                name="T-Prim"
+                            />
+                            <Axiom
+                                conclusion={
+                                    exceptions ? (
+                                        <>∅ ⊢ eq : (α → (α → Bool !p) !p) ! p</>
+                                    ) : (
+                                        <>∅ ⊢ eq : α → α → Bool</>
+                                    )
+                                }
+                                name="T-Prim"
+                            />
+                        </>
+                    )}
+                    {exceptions && (
+                        <>
+                            <Axiom conclusion={<>Γ ⊢ error : τ ! i</>} name="T-Error" />
+                            <Rule2
+                                premise1="Γ ⊢ e₁ : τ ! ϵ₁"
+                                premise2="Γ ⊢ e₂ : τ ! ϵ₂"
+                                conclusion="Γ ⊢ try e₁ with e₂ : τ ! (ϵ₁ • ϵ₂)"
+                                name="T-Try"
+                            />
+                        </>
+                    )}
+                </div>
             </div>
+            {exceptions && (
+                <div className="rules-dialog-section">
+                    <div className="rules-dialog-subhead">Effects</div>
+                    <p className="rules-dialog-note">
+                        <code>!p</code> pure, <code>!i</code> impure (may raise); arrows
+                        carry their body&apos;s effect
+                    </p>
+                    <div className="rules-row">
+                        <span className="judgment">p ∘ ϵ = ϵ</span>
+                        <span className="judgment">i ∘ ϵ = i</span>
+                        <span className="judgment">p • ϵ = p</span>
+                        <span className="judgment">i • ϵ = ϵ</span>
+                    </div>
+                    <p className="rules-dialog-note">
+                        ∘: T-App/Neg/Add1/Eq — impure if any part is
+                        <br />
+                        •: T-Try — pure if the handled branch can&apos;t raise
+                    </p>
+                </div>
+            )}
             {compact && (
                 <>
                     <div className="rules-dialog-subhead">Uncurried Types</div>
                     <p className="rules-dialog-note">
-                        High-order functions can be seen as a normal function whose input is a
-                        Cartesian product of types, e.g. <code>A → B → C</code> to <code>A × B → C</code>. See{' '}
+                        High-order functions can be seen as a normal function whose input
+                        is a Cartesian product of types, e.g. <code>A → B → C</code> to{' '}
+                        <code>A × B → C</code>. See{' '}
                         <a
                             href="https://en.wikipedia.org/wiki/Currying"
                             target="_blank"

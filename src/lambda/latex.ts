@@ -1,6 +1,6 @@
 import type { ProofNode } from './typecheck'
 import type { Ctx, Term, Type } from './types'
-import { TYVAR } from './primitives'
+import { BOTTOM, TYVAR } from './primitives'
 
 function collectEnvs(n: ProofNode, envs: Map<string, Ctx>) {
     const key = JSON.stringify(n.ctx)
@@ -71,6 +71,10 @@ function termToString(t: Term, ctx: Ctx, binderSubs: Map<string, number>): strin
             return `\\texttt{${t.name}}`
         case 'lit':
             return t.type === 'Bool' ? `\\texttt{${t.value}}` : String(t.value)
+        case 'error':
+            return '\\texttt{error}'
+        case 'try':
+            return `\\texttt{try}\\ ${termToString(t.body, ctx, binderSubs)}\\ \\texttt{with}\\ ${termToString(t.handler, ctx, binderSubs)}`
         case 'abs': {
             const extended = paramCtxExtension(ctx, t)
             const param = varLatex(
@@ -81,7 +85,7 @@ function termToString(t: Term, ctx: Ctx, binderSubs: Map<string, number>): strin
         }
         case 'app': {
             const fn =
-                t.fn.kind === 'abs'
+                t.fn.kind === 'abs' || t.fn.kind === 'try'
                     ? `(${termToString(t.fn, ctx, binderSubs)})`
                     : termToString(t.fn, ctx, binderSubs)
             const arg =
@@ -97,20 +101,35 @@ function escape(s: string): string {
     return s.replace(/→/g, '\\to ').replace(/λ/g, '\\lambda ')
 }
 
-function typeToLatex(t: Type): string {
-    if (t.kind === 'base') return t.name === TYVAR ? '\\alpha ' : `\\text{${t.name}}`
+function typeToLatex(t: Type, showEffect: boolean): string {
+    if (t.kind === 'base') {
+        if (t.name === TYVAR) return '\\alpha '
+        if (t.name === BOTTOM) return '\\bot '
+        return `\\text{${t.name}}`
+    }
     const from =
-        t.from.kind === 'arrow' ? `(${typeToLatex(t.from)})` : typeToLatex(t.from)
-    return `${from} \\to ${typeToLatex(t.to)}`
+        t.from.kind === 'arrow'
+            ? `(${typeToLatex(t.from, showEffect)})`
+            : typeToLatex(t.from, showEffect)
+    const to =
+        t.to.kind === 'arrow' && showEffect
+            ? `(${typeToLatex(t.to, showEffect)})`
+            : typeToLatex(t.to, showEffect)
+    const arrow = `${from} \\to ${to}`
+    return showEffect ? `${arrow}\\ !${t.effect}` : arrow
 }
 
 // Renders a Γ's bindings, resolving any shadowed name to its own subscript so
 // e.g. "x : Bool, x : Nat" reads as which x is which.
-function ctxLatex(ctx: Ctx, binderSubs: Map<string, number>): string {
+function ctxLatex(
+    ctx: Ctx,
+    binderSubs: Map<string, number>,
+    exceptions: boolean
+): string {
     return ctx
         .map(
             ([n, t], i) =>
-                `${varLatex(escape(n), binderSubAt(ctx, i, binderSubs))} : ${typeToLatex(t)}`
+                `${varLatex(escape(n), binderSubAt(ctx, i, binderSubs))} : ${typeToLatex(t, exceptions)}`
         )
         .join(', ')
 }
@@ -118,33 +137,38 @@ function ctxLatex(ctx: Ctx, binderSubs: Map<string, number>): string {
 function envLatex(
     ctx: Ctx,
     labels: Map<string, number>,
-    binderSubs: Map<string, number>
+    binderSubs: Map<string, number>,
+    exceptions: boolean
 ): string {
     if (ctx.length === 0) return '\\emptyset'
     const i = labels.get(JSON.stringify(ctx))
     if (i !== undefined) return `\\Gamma_{${i}}`
-    return ctxLatex(ctx, binderSubs)
+    return ctxLatex(ctx, binderSubs, exceptions)
 }
 
 function judgment(
     n: ProofNode,
     labels: Map<string, number>,
-    binderSubs: Map<string, number>
+    binderSubs: Map<string, number>,
+    exceptions: boolean
 ): string {
-    return `${envLatex(n.ctx, labels, binderSubs)} \\vdash ${escape(termToString(n.term, n.ctx, binderSubs))} : ${typeToLatex(n.type)}`
+    const effect = exceptions ? `\\ !${n.effect}` : ''
+    return `${envLatex(n.ctx, labels, binderSubs, exceptions)} \\vdash ${escape(termToString(n.term, n.ctx, binderSubs))} : ${typeToLatex(n.type, exceptions)}${effect}`
 }
 
 function nodeToLatex(
     n: ProofNode,
     labels: Map<string, number>,
-    binderSubs: Map<string, number>
+    binderSubs: Map<string, number>,
+    exceptions: boolean
 ): string {
-    const concl = `$${judgment(n, labels, binderSubs)}$`
+    const concl = `$${judgment(n, labels, binderSubs, exceptions)}$`
     if (n.rule === 'T-Var') {
-        const hyp = `$${escape(termToString(n.term, n.ctx, binderSubs))} : ${typeToLatex(n.type)} \\in ${envLatex(
+        const hyp = `$${escape(termToString(n.term, n.ctx, binderSubs))} : ${typeToLatex(n.type, exceptions)} \\in ${envLatex(
             n.ctx,
             labels,
-            binderSubs
+            binderSubs,
+            exceptions
         )}$`
         return `\\AxiomC{${hyp}}\n\\RightLabel{\\scriptsize \\textsc{T-Var}}\n\\UnaryInfC{${concl}}`
     }
@@ -152,13 +176,13 @@ function nodeToLatex(
         return `\\AxiomC{}\n\\RightLabel{\\scriptsize \\textsc{${n.rule}}}\n\\UnaryInfC{${concl}}`
     }
     const premiseLatex = n.premises
-        .map((p) => nodeToLatex(p, labels, binderSubs))
+        .map((p) => nodeToLatex(p, labels, binderSubs, exceptions))
         .join('\n')
     const infer = n.premises.length === 1 ? 'UnaryInfC' : 'BinaryInfC'
     return `${premiseLatex}\n\\RightLabel{\\scriptsize \\textsc{${n.rule}}}\n\\${infer}{${concl}}`
 }
 
-export function proofToLatex(root: ProofNode): string {
+export function proofToLatex(root: ProofNode, exceptions = false): string {
     const envs = new Map<string, Ctx>()
     collectEnvs(root, envs)
     const entries = [...envs.values()].filter((ctx) => ctx.length > 0)
@@ -171,13 +195,13 @@ export function proofToLatex(root: ProofNode): string {
     const binderSubs = buildBinderSubs(byName)
 
     const legend = entries.map(
-        (ctx, i) => `\\[\\Gamma_{${i}} = ${ctxLatex(ctx, binderSubs)}\\]`
+        (ctx, i) => `\\[\\Gamma_{${i}} = ${ctxLatex(ctx, binderSubs, exceptions)}\\]`
     )
 
     return [
         ...legend,
         '\\begin{prooftree}',
-        nodeToLatex(root, labels, binderSubs),
+        nodeToLatex(root, labels, binderSubs, exceptions),
         '\\end{prooftree}'
     ].join('\n')
 }

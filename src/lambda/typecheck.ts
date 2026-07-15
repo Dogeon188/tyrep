@@ -1,6 +1,6 @@
-import { BUILTIN_TYPES, TYVAR } from './primitives'
-import type { Ctx, Term, Type } from './types'
-import { typesEqual, typeToString } from './types'
+import { BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
+import type { Ctx, Effect, Term, Type } from './types'
+import { typesEqual, typeToString, unifyTypes } from './types'
 
 // Replaces eq's placeholder type-variable with the concrete type it was
 // applied to (only substitution this toy type system needs).
@@ -9,15 +9,24 @@ function substType(t: Type, replacement: Type): Type {
     return {
         kind: 'arrow',
         from: substType(t.from, replacement),
-        to: substType(t.to, replacement)
+        to: substType(t.to, replacement),
+        effect: t.effect
     }
 }
+
+// Effect composition from exn.pdf Appendix B: `∘` (sequencing — impure if
+// either side is) determines T-App's effect from callee/arg/body; `•`
+// (try-merge) determines T-Try's effect from its two branches.
+const seqEffect = (a: Effect, b: Effect): Effect => (a === 'i' || b === 'i' ? 'i' : 'p')
+const tryEffect = (body: Effect, handler: Effect): Effect =>
+    body === 'p' ? 'p' : handler
 
 export type ProofNode = {
     ctx: Ctx
     term: Term
     type: Type
-    rule: 'T-Var' | 'T-App' | 'T-Abs' | 'T-Lit' | 'T-Prim'
+    effect: Effect
+    rule: 'T-Var' | 'T-App' | 'T-Abs' | 'T-Lit' | 'T-Prim' | 'T-Error' | 'T-Try'
     premises: ProofNode[]
 }
 
@@ -53,6 +62,7 @@ function collectFreeVars(term: Term, ctx: Ctx): string[] {
                 return
             case 'lit':
             case 'prim':
+            case 'error':
                 return
             case 'abs':
                 walk(t.body, new Set(bound).add(t.param))
@@ -60,6 +70,10 @@ function collectFreeVars(term: Term, ctx: Ctx): string[] {
             case 'app':
                 walk(t.fn, bound)
                 walk(t.arg, bound)
+                return
+            case 'try':
+                walk(t.body, bound)
+                walk(t.handler, bound)
         }
     }
     walk(term, new Set())
@@ -91,6 +105,7 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
                 ctx,
                 term,
                 type: { kind: 'base', name: term.type },
+                effect: 'p',
                 rule: 'T-Lit',
                 premises: []
             }
@@ -99,13 +114,23 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
                 ctx,
                 term,
                 type: BUILTIN_TYPES[term.name],
+                effect: 'p',
                 rule: 'T-Prim',
+                premises: []
+            }
+        case 'error':
+            return {
+                ctx,
+                term,
+                type: { kind: 'base', name: BOTTOM },
+                effect: 'i',
+                rule: 'T-Error',
                 premises: []
             }
         case 'var': {
             const type = lookup(ctx, term.name)
             if (!type) throw new TypeError2(`unbound variable "${term.name}"`)
-            return { ctx, term, type, rule: 'T-Var', premises: [] }
+            return { ctx, term, type, effect: 'p', rule: 'T-Var', premises: [] }
         }
         case 'app': {
             const fnNode = deriveNode(ctx, term.fn)
@@ -123,7 +148,30 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
                 )
             }
             const type = isPoly ? substType(fnNode.type.to, argNode.type) : fnNode.type.to
-            return { ctx, term, type, rule: 'T-App', premises: [fnNode, argNode] }
+            const effect = seqEffect(
+                seqEffect(fnNode.effect, argNode.effect),
+                fnNode.type.effect
+            )
+            return { ctx, term, type, effect, rule: 'T-App', premises: [fnNode, argNode] }
+        }
+        case 'try': {
+            const bodyNode = deriveNode(ctx, term.body)
+            const handlerNode = deriveNode(ctx, term.handler)
+            if (!typesEqual(bodyNode.type, handlerNode.type)) {
+                throw new TypeError2(
+                    `try branches disagree: ${typeToString(bodyNode.type)} vs ${typeToString(handlerNode.type)}`
+                )
+            }
+            const type = unifyTypes(bodyNode.type, handlerNode.type)
+            const effect = tryEffect(bodyNode.effect, handlerNode.effect)
+            return {
+                ctx,
+                term,
+                type,
+                effect,
+                rule: 'T-Try',
+                premises: [bodyNode, handlerNode]
+            }
         }
         case 'abs': {
             // ponytail: fall back to a same-name Γ binding instead of forcing inline annotation everywhere
@@ -140,7 +188,13 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
             return {
                 ctx,
                 term,
-                type: { kind: 'arrow', from: paramType, to: bodyNode.type },
+                type: {
+                    kind: 'arrow',
+                    from: paramType,
+                    to: bodyNode.type,
+                    effect: bodyNode.effect
+                },
+                effect: 'p',
                 rule: 'T-Abs',
                 premises: [bodyNode]
             }

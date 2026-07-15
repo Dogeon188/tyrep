@@ -1,56 +1,56 @@
 .rules-dialog {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
-  background: var(--bg);
-  color: var(--fg);
-  padding: 1rem;
-  max-width: 90vw;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--bg);
+    color: var(--fg);
+    padding: 1rem;
+    max-width: 90vw;
 }
 
 .rules-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .rules-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
 }
 
 .rules-dialog-header button {
-  border: none;
-  background: var(--gray-4);
-  border-radius: var(--radius-small);
-  cursor: pointer;
-  color: inherit;
+    border: none;
+    background: var(--gray-4);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    color: inherit;
 }
 
 .rules-dialog-subhead {
-  font-size: 0.75rem;
-  font-variant: small-caps;
-  color: var(--muted);
-  margin: 0.5rem 0 0.3rem;
+    font-size: 0.75rem;
+    font-variant: small-caps;
+    color: var(--muted);
+    margin: 0.5rem 0 0.3rem;
 }
 
 .rules-dialog-section {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
 }
 
 .rules-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 1rem 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1.5rem 2rem;
 }
 
 .rules-dialog-note {
-  font-size: 0.8rem;
-  color: var(--muted);
-  max-width: 40rem;
-  line-height: 1.4;
-  margin: 0 auto;
+    font-size: 0.8rem;
+    color: var(--muted);
+    max-width: 40rem;
+    line-height: 1.4;
+    margin: 0 auto;
 }
