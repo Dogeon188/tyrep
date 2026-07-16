@@ -1,5 +1,5 @@
 import { RuleDiagram } from './RuleDiagram'
-import { PRIMITIVE_AXIOMS, RULES } from '../lambda/rules'
+import { LITERAL_AXIOMS, PRIM_FUNCTION_AXIOMS, RULES } from '../lambda/rules'
 import type { ProofNode } from '../lambda/typecheck'
 import './ProofTree.css'
 import './ReferenceModal.css'
@@ -17,12 +17,14 @@ function Rule({ rule, showEffects }: { rule: ProofNode['rule']; showEffects: boo
 export function ReferenceModal({
     dialogRef,
     primitives,
+    dedicated,
     exceptions,
     effects,
     compact
 }: {
     dialogRef: React.RefObject<HTMLDialogElement | null>
     primitives: boolean
+    dedicated: boolean
     exceptions: boolean
     effects: boolean
     compact: boolean
@@ -74,7 +76,7 @@ export function ReferenceModal({
                     <Rule rule="T-Abs" showEffects={showEffects} />
                     <Rule rule="T-App" showEffects={showEffects} />
                     {primitives &&
-                        PRIMITIVE_AXIOMS.map((axiom, i) => (
+                        LITERAL_AXIOMS.map((axiom, i) => (
                             <RuleDiagram
                                 key={i}
                                 premises={[]}
@@ -82,6 +84,23 @@ export function ReferenceModal({
                                 name={axiom.name}
                             />
                         ))}
+                    {primitives &&
+                        !dedicated &&
+                        PRIM_FUNCTION_AXIOMS.map((axiom, i) => (
+                            <RuleDiagram
+                                key={i}
+                                premises={[]}
+                                conclusion={axiom.conclusion(showEffects)}
+                                name={axiom.name}
+                            />
+                        ))}
+                    {primitives && dedicated && (
+                        <>
+                            <Rule rule="T-Neg" showEffects={showEffects} />
+                            <Rule rule="T-Add1" showEffects={showEffects} />
+                            <Rule rule="T-Eq" showEffects={showEffects} />
+                        </>
+                    )}
                     {exceptions && (
                         <>
                             <Rule rule="T-Error" showEffects={showEffects} />

@@ -1,4 +1,5 @@
-import { BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
+import { BOOL, BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
+import type { ParseOptions } from './parser'
 import type { Ctx, Effect, Term, Type } from './types'
 import { effectToString, typesEqual, typeToString, unifyTypes } from './types'
 
@@ -57,6 +58,9 @@ export type ProofNode = {
         | 'T-Try'
         | 'T-Op'
         | 'T-Handle'
+        | 'T-Neg'
+        | 'T-Add1'
+        | 'T-Eq'
     premises: ProofNode[]
 }
 
@@ -130,11 +134,66 @@ function withFreeVarTypes(ctx: Ctx, term: Term): Ctx {
 }
 
 /** Pure synthesis over T-Var/T-App/T-Abs: context + expression -> result type. */
-export function derive(ctx: Ctx, term: Term): ProofNode {
-    return deriveNode(withFreeVarTypes(ctx, term), term)
+export function derive(ctx: Ctx, term: Term, opts: ParseOptions = {}): ProofNode {
+    return deriveNode(withFreeVarTypes(ctx, term), term, opts)
 }
 
-function deriveNode(ctx: Ctx, term: Term): ProofNode {
+// Recognizes `neg e`/`add1 e`/`eq e1 e2` application shapes and derives them
+// via exn.pdf Appendix B's dedicated T-Neg/T-Add1/T-Eq axioms instead of
+// generic T-App/T-Prim decomposition — same .type/.effect either way (see
+// typecheck.test.ts), just a flatter, PDF-matching proof tree. Returns null
+// for anything else (bare prim, partial application, ...), which falls back
+// to the generic case.
+function deriveDedicatedPrim(
+    ctx: Ctx,
+    term: Extract<Term, { kind: 'app' }>,
+    opts: ParseOptions
+): ProofNode | null {
+    const { fn, arg } = term
+    if (fn.kind === 'prim' && (fn.name === 'neg' || fn.name === 'add1')) {
+        const primType = BUILTIN_TYPES[fn.name]
+        if (primType.kind !== 'arrow') return null
+        const argNode = deriveNode(ctx, arg, opts)
+        const domain = primType.from
+        if (!typesEqual(argNode.type, domain)) {
+            throw new TypeError2(
+                `argument has type ${typeToString(argNode.type)}, expected ${typeToString(domain)}`
+            )
+        }
+        const effect = argNode.effect === argNode.type ? domain : argNode.effect
+        return {
+            ctx,
+            term,
+            type: primType.to,
+            effect,
+            rule: fn.name === 'neg' ? 'T-Neg' : 'T-Add1',
+            premises: [argNode]
+        }
+    }
+    if (fn.kind === 'app' && fn.fn.kind === 'prim' && fn.fn.name === 'eq') {
+        const e1Node = deriveNode(ctx, fn.arg, opts)
+        const e2Node = deriveNode(ctx, arg, opts)
+        if (!typesEqual(e1Node.type, e2Node.type)) {
+            throw new TypeError2(
+                `eq operands have different types: ${typeToString(e1Node.type)} vs ${typeToString(e2Node.type)}`
+            )
+        }
+        const anchor = unifyTypes(e1Node.type, e2Node.type)
+        const e1Effect = e1Node.effect === e1Node.type ? anchor : e1Node.effect
+        const e2Effect = e2Node.effect === e2Node.type ? anchor : e2Node.effect
+        return {
+            ctx,
+            term,
+            type: BOOL,
+            effect: seqEffect(e1Effect, e2Effect),
+            rule: 'T-Eq',
+            premises: [e1Node, e2Node]
+        }
+    }
+    return null
+}
+
+function deriveNode(ctx: Ctx, term: Term, opts: ParseOptions): ProofNode {
     switch (term.kind) {
         case 'lit':
             return {
@@ -180,13 +239,17 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
             return { ctx, term, type, effect: 'p', rule: 'T-Var', premises: [] }
         }
         case 'app': {
-            const fnNode = deriveNode(ctx, term.fn)
+            if (opts.dedicated) {
+                const dedicated = deriveDedicatedPrim(ctx, term, opts)
+                if (dedicated) return dedicated
+            }
+            const fnNode = deriveNode(ctx, term.fn, opts)
             if (fnNode.type.kind !== 'arrow') {
                 throw new TypeError2(
                     `applying non-function of type ${typeToString(fnNode.type)}`
                 )
             }
-            const argNode = deriveNode(ctx, term.arg)
+            const argNode = deriveNode(ctx, term.arg, opts)
             const isPoly =
                 fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
             if (!isPoly && !typesEqual(argNode.type, fnNode.type.from)) {
@@ -210,8 +273,8 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
             return { ctx, term, type, effect, rule: 'T-App', premises: [fnNode, argNode] }
         }
         case 'try': {
-            const bodyNode = deriveNode(ctx, term.body)
-            const handlerNode = deriveNode(ctx, term.handler)
+            const bodyNode = deriveNode(ctx, term.body, opts)
+            const handlerNode = deriveNode(ctx, term.handler, opts)
             if (!typesEqual(bodyNode.type, handlerNode.type)) {
                 throw new TypeError2(
                     `try branches disagree: ${typeToString(bodyNode.type)} vs ${typeToString(handlerNode.type)}`
@@ -231,7 +294,7 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
         case 'handle': {
             // T-Handle (eff.pdf §6): Γ⊢e:σ!τ' · Γ,x:σ⊢er:τ!ϵ · Γ,k:τ'→τ!ϵ⊢eo:τ!ϵ
             //   ⟹ Γ⊢handle e with {x.er;k.eo} : τ!ϵ
-            const bodyNode = deriveNode(ctx, term.body)
+            const bodyNode = deriveNode(ctx, term.body, opts)
             // τ': the type an escaping `op` inside the body expects from its
             // continuation. If the body is genuinely pure (no escaping op —
             // its effect is a plain 'p'/'i' string, not our Type-valued
@@ -242,14 +305,14 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
                 typeof bodyNode.effect === 'string'
                     ? { kind: 'base', name: BOTTOM }
                     : bodyNode.effect
-            const erNode = deriveNode([...ctx, [term.x, bodyNode.type]], term.er)
+            const erNode = deriveNode([...ctx, [term.x, bodyNode.type]], term.er, opts)
             const kType: Type = {
                 kind: 'arrow',
                 from: tauPrime,
                 to: erNode.type,
                 effect: erNode.effect
             }
-            const eoNode = deriveNode([...ctx, [term.k, kType]], term.eo)
+            const eoNode = deriveNode([...ctx, [term.k, kType]], term.eo, opts)
             if (!typesEqual(eoNode.type, erNode.type)) {
                 throw new TypeError2(
                     `handle clauses disagree: ${typeToString(erNode.type)} vs ${typeToString(eoNode.type)}`
@@ -280,7 +343,7 @@ function deriveNode(ctx: Ctx, term: Term): ProofNode {
             // Reusing the same Γ binding (no explicit annotation) shouldn't duplicate
             // it in the body's context — that just prints "x : T, x : T" in the legend.
             const bodyCtx: Ctx = term.paramType ? [...ctx, [term.param, paramType]] : ctx
-            const bodyNode = deriveNode(bodyCtx, term.body)
+            const bodyNode = deriveNode(bodyCtx, term.body, opts)
             return {
                 ctx,
                 term,

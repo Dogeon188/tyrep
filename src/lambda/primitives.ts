@@ -1,7 +1,9 @@
 import type { Type } from './types'
 
-const bool: Type = { kind: 'base', name: 'Bool' }
-const int: Type = { kind: 'base', name: 'Int' }
+export const BOOL: Type = { kind: 'base', name: 'Bool' }
+export const INT: Type = { kind: 'base', name: 'Int' }
+const bool = BOOL
+const int = INT
 
 // Reserved type-variable name for eq's schema (α → α → Bool). Not an ASCII
 // identifier, so it can never collide with a user-typed type name — the

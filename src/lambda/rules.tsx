@@ -50,6 +50,21 @@ export const RULES: Record<ProofNode['rule'], RuleSpec> = {
         premises: () => [],
         conclusion: () => <>Γ ⊢ op : τ ! τ</>
     },
+    'T-Neg': {
+        premises: (e) => [e ? 'Γ ⊢ e : Bool ! ϵ' : 'Γ ⊢ e : Bool'],
+        conclusion: (e) => (e ? 'Γ ⊢ neg e : Bool ! ϵ' : 'Γ ⊢ neg e : Bool')
+    },
+    'T-Add1': {
+        premises: (e) => [e ? 'Γ ⊢ e : Int ! ϵ' : 'Γ ⊢ e : Int'],
+        conclusion: (e) => (e ? 'Γ ⊢ add1 e : Int ! ϵ' : 'Γ ⊢ add1 e : Int')
+    },
+    'T-Eq': {
+        premises: (e) => [
+            e ? 'Γ ⊢ e₁ : τ ! ϵ₁' : 'Γ ⊢ e₁ : τ',
+            e ? 'Γ ⊢ e₂ : τ ! ϵ₂' : 'Γ ⊢ e₂ : τ'
+        ],
+        conclusion: (e) => (e ? 'Γ ⊢ eq e₁ e₂ : Bool ! (ϵ₁ ∘ ϵ₂)' : 'Γ ⊢ eq e₁ e₂ : Bool')
+    },
     'T-Handle': {
         premises: () => [
             <>Γ ⊢ e : σ ! ϵ'</>,
@@ -72,10 +87,11 @@ export const RULES: Record<ProofNode['rule'], RuleSpec> = {
 
 // Concrete axiom instances (not the generic T-Lit/T-Prim schema above) shown
 // in the reference dialog's primitives section.
-export const PRIMITIVE_AXIOMS: {
-    name: 'T-Lit' | 'T-Prim'
-    conclusion: (showEffects: boolean) => ReactNode
-}[] = [
+type Axiom = { name: 'T-Lit' | 'T-Prim'; conclusion: (showEffects: boolean) => ReactNode }
+
+// Always shown when primitives are on, regardless of the dedicated-rules
+// toggle — literals never go through T-Prim either way.
+export const LITERAL_AXIOMS: Axiom[] = [
     {
         name: 'T-Lit',
         conclusion: (e) => (e ? <>∅ ⊢ true : Bool ! p</> : <>∅ ⊢ true : Bool</>)
@@ -92,7 +108,13 @@ export const PRIMITIVE_AXIOMS: {
             ) : (
                 <>∅ ⊢ n : Int (n = 0, 1, 2, ...)</>
             )
-    },
+    }
+]
+
+// Shown only when the dedicated-rules toggle is off — otherwise neg/add1/eq
+// are derived via the T-Neg/T-Add1/T-Eq entries in RULES above instead of
+// this generic curried-function-type axiom.
+export const PRIM_FUNCTION_AXIOMS: Axiom[] = [
     {
         name: 'T-Prim',
         conclusion: (e) =>

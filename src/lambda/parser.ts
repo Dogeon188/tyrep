@@ -75,6 +75,9 @@ export type ParseOptions = {
     primitives?: boolean
     exceptions?: boolean
     effects?: boolean
+    // Only consumed by typecheck.ts's derive() — kept here so callers can
+    // pass one shared options object to both parseTermString and derive.
+    dedicated?: boolean
 }
 
 const isNumber = (t: string | undefined) => !!t && /^\d+$/.test(t)

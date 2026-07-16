@@ -22,32 +22,35 @@ function App() {
     const [ctxSrc, setCtxSrc] = useState(EXAMPLE.ctx)
     const [termSrc, setTermSrc] = useState(EXAMPLE.term)
     const [primitives, setPrimitives] = useState(false)
+    const [dedicated, setDedicated] = useState(true)
     const [exceptions, setExceptions] = useState(false)
     const [effects, setEffects] = useState(false)
     const [compact, setCompact] = useState(false)
     const rulesDialogRef = useRef<HTMLDialogElement>(null)
     const showEffects = exceptions || effects
+    const opts = useMemo(
+        () => ({ primitives, dedicated, exceptions, effects }),
+        [primitives, dedicated, exceptions, effects]
+    )
 
     const result = useMemo(() => {
         try {
             const ctx = parseCtxString(ctxSrc)
-            const term = parseTermString(termSrc, { primitives, exceptions, effects })
-            const root = derive(ctx, term)
+            const term = parseTermString(termSrc, opts)
+            const root = derive(ctx, term, opts)
             return { root, error: null }
         } catch (e) {
             return { root: null, error: e instanceof Error ? e.message : String(e) }
         }
-    }, [ctxSrc, termSrc, primitives, exceptions, effects])
+    }, [ctxSrc, termSrc, opts])
 
     const fullForm = useMemo(() => {
         try {
-            return termToFullString(
-                parseTermString(termSrc, { primitives, exceptions, effects })
-            )
+            return termToFullString(parseTermString(termSrc, opts))
         } catch {
             return null
         }
-    }, [termSrc, primitives, exceptions, effects])
+    }, [termSrc, opts])
 
     const latex = useMemo(
         () => (result.root ? proofToLatex(result.root, showEffects) : ''),
@@ -70,6 +73,7 @@ function App() {
                                 setCtxSrc(preset.ctx)
                                 setTermSrc(preset.term)
                                 setPrimitives(preset.primitives)
+                                setDedicated(true)
                                 setExceptions(preset.exceptions)
                                 setEffects(preset.effects)
                             }}
@@ -92,6 +96,16 @@ function App() {
                     >
                         BoolInt
                     </button>
+                    {primitives && (
+                        <button
+                            type="button"
+                            className="primitives-toggle"
+                            aria-pressed={dedicated}
+                            onClick={() => setDedicated((v) => !v)}
+                        >
+                            First-Class
+                        </button>
+                    )}
                     <button
                         type="button"
                         className="primitives-toggle"
@@ -190,6 +204,7 @@ function App() {
             <ReferenceModal
                 dialogRef={rulesDialogRef}
                 primitives={primitives}
+                dedicated={dedicated}
                 exceptions={exceptions}
                 effects={effects}
                 compact={compact}

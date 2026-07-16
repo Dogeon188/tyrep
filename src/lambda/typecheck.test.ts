@@ -63,6 +63,58 @@ describe('derive', () => {
     })
 })
 
+describe('derive — dedicated primitive rules (exn.pdf Appendix B)', () => {
+    const opts = { primitives: true, dedicated: true }
+
+    test('neg/add1 derive via T-Neg/T-Add1 with a single premise', () => {
+        const neg = derive([], parseTermString('neg true', { primitives: true }), opts)
+        expect(neg.rule).toBe('T-Neg')
+        expect(neg.premises).toHaveLength(1)
+        expect(neg.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(neg.effect).toBe('p')
+
+        const add1 = derive([], parseTermString('add1 41', { primitives: true }), opts)
+        expect(add1.rule).toBe('T-Add1')
+        expect(add1.premises).toHaveLength(1)
+        expect(add1.type).toEqual({ kind: 'base', name: 'Int' })
+    })
+
+    test('eq derives via T-Eq with two premises', () => {
+        const eq = derive([], parseTermString('eq 1 2', { primitives: true }), opts)
+        expect(eq.rule).toBe('T-Eq')
+        expect(eq.premises).toHaveLength(2)
+        expect(eq.type).toEqual({ kind: 'base', name: 'Bool' })
+    })
+
+    test('eq still rejects mismatched operand types', () => {
+        expect(() =>
+            derive([], parseTermString('eq 1 true', { primitives: true }), opts)
+        ).toThrow(TypeError2)
+    })
+
+    test('dedicated and generic modes agree on .type/.effect', () => {
+        const term = parseTermString('eq (add1 1) (add1 (add1 0))', {
+            primitives: true
+        })
+        const generic = derive([], term)
+        const dedicatedResult = derive([], term, opts)
+        expect(dedicatedResult.type).toEqual(generic.type)
+        expect(dedicatedResult.effect).toEqual(generic.effect)
+    })
+
+    test('op resolves through dedicated rules just like the generic path', () => {
+        const opOpts = { primitives: true, effects: true, dedicated: true }
+        const eq = derive([], parseTermString('eq 1 op', opOpts), opOpts)
+        expect(eq.rule).toBe('T-Eq')
+        expect(eq.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(eq.effect).toEqual({ kind: 'base', name: 'Int' })
+
+        const neg = derive([], parseTermString('neg op', opOpts), opOpts)
+        expect(neg.rule).toBe('T-Neg')
+        expect(neg.effect).toEqual({ kind: 'base', name: 'Bool' })
+    })
+})
+
 describe('derive — exceptions (exn.pdf §6/Appendix B)', () => {
     const opts = { primitives: true, exceptions: true }
 
