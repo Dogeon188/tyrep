@@ -1,12 +1,14 @@
 # TyRep
 
-A simply-typed lambda calculus type checker with proof-tree visualization.
+A simply-typed lambda calculus type checker with proof-tree visualization. Dedicated for the [MCS.M428 Programming Language Theory](https://syllabus.s.isct.ac.jp/courses/2026/4/1-22-442222-0-0/202636459?hl=en) course at ISCT.
 
 Type a term and (optionally) a context, and TyRep derives its type using
-[STLC typing rules](https://en.wikipedia.org/wiki/Simply_typed_lambda_calculus), rendering the derivation as a proof tree. Supports
-Bool/Int primitives (`add1`, `eq`, ...), optional exceptions (`error`/`try`/`with`)
-and algebraic effects (`op`/`handle`/`with`) with a precise effect type system,
-and a LaTeX export of the proof tree.
+[STLC typing rules](https://en.wikipedia.org/wiki/Simply_typed_lambda_calculus), rendering the derivation as a proof tree. Supports:
+
+- Bool/Int primitives (`add1`, `eq`, ...)
+- Exceptions (`error`/`try`/`with`)
+- Algebraic effects (`op`/`handle`/`with`) with a precise effect type system
+- LaTeX export of the proof tree
 
 ## Usage
 
@@ -25,7 +27,7 @@ bun test         # run typecheck/parser tests
 An example:
 
 ```sh
-bun run cli.ts --term "λx:b -> b -> b. λy:b. x y y" [--ctx "x : T, y : T"] [--latex]
+bun cli.ts --term "λx:b -> b -> b. λy:b. x y y" [--ctx "x : T, y : T"] [--latex]
 ```
 
 `--term` is the expression to derive type; `--ctx` is the typing environment; `--latex` outputs the derivation in LaTeX [bussproofs](https://mathweb.ucsd.edu/~sbuss/ResearchWeb/bussproofs/index.html) format.
@@ -41,4 +43,4 @@ bun run cli.ts --term "λx:b -> b -> b. λy:b. x y y" [--ctx "x : T, y : T"] [--
 ## Stack
 
 React 19 + TypeScript + Vite, [calligraph](https://www.npmjs.com/package/calligraph)
-for rendering, Bun for the CLI/tests.
+for rendering, Bun for the runtime/CLI/tests. Visual design inspired by [sylph](https://github.com/raphaelsalaja/sylph).
