@@ -1,21 +1,21 @@
 import { useMemo, useRef, useState } from 'react'
 import './App.css'
-import { parseCtxString, parseTermString } from './lambda/parser'
-import { derive } from './lambda/typecheck'
-import { proofToLatex } from './lambda/latex'
+import { FullForm } from './components/FullForm'
+import { GithubLink } from './components/GithubLink'
+import { CtxHint, TermHint } from './components/InputHints'
+import { LabeledTextarea } from './components/LabeledTextarea'
 import { ProofTree } from './components/ProofTree'
 import { ReferenceModal } from './components/ReferenceModal'
-import { LabeledTextarea } from './components/LabeledTextarea'
-import { CtxHint, TermHint } from './components/InputHints'
-import { FullForm } from './components/FullForm'
-import {
-    typeToString,
-    typeToUncurriedString,
-    termToFullString,
-    effectToString
-} from './lambda/types'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
-import { GithubLink } from './components/GithubLink'
+import { proofToLatex } from './lambda/latex'
+import { parseCtxString, parseTermString } from './lambda/parser'
+import { derive } from './lambda/typecheck'
+import {
+    effectToString,
+    termToFullString,
+    typeToString,
+    typeToUncurriedString
+} from './lambda/types'
 import { EXAMPLE, PRESETS } from './presets'
 
 function App() {
@@ -59,6 +59,28 @@ function App() {
 
     return (
         <>
+            <div className="top-left-bar">
+                <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Reference"
+                    onClick={() => rulesDialogRef.current?.showModal()}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    </svg>
+                </button>
+            </div>
             <h1 className="app-title">TyRep</h1>
             <div className="inputs">
                 <div className="preset-row">
@@ -88,24 +110,24 @@ function App() {
                             ))}
                         </select>
                     </span>
+                </div>
+                <div className="preset-row">
                     <button
                         type="button"
-                        className="primitives-toggle"
+                        className="primitives-toggle boolint-toggle"
                         aria-pressed={primitives}
-                        onClick={() => setPrimitives((v) => !v)}
+                        onClick={() => {
+                            if (!primitives) setPrimitives(true)
+                            else if (dedicated) setDedicated(false)
+                            else {
+                                setPrimitives(false)
+                                setDedicated(true)
+                            }
+                        }}
                     >
                         BoolInt
+                        {primitives ? (dedicated ? ': First-Class' : ': Primitives') : ''}
                     </button>
-                    {primitives && (
-                        <button
-                            type="button"
-                            className="primitives-toggle"
-                            aria-pressed={dedicated}
-                            onClick={() => setDedicated((v) => !v)}
-                        >
-                            First-Class
-                        </button>
-                    )}
                     <button
                         type="button"
                         className="primitives-toggle"
@@ -131,13 +153,6 @@ function App() {
                         }
                     >
                         Effects
-                    </button>
-                    <button
-                        type="button"
-                        className="primitives-toggle"
-                        onClick={() => rulesDialogRef.current?.showModal()}
-                    >
-                        Reference
                     </button>
                 </div>
                 <LabeledTextarea
