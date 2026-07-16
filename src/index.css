@@ -170,81 +170,8 @@ code {
     display: inline-flex;
     border-radius: var(--radius-small);
     color: var(--fg);
-}
-
-code {
     font-size: 12px;
     line-height: 135%;
     padding: 4px 8px;
     background: var(--kbd-bg);
-}
-
-.top-right-bar,
-.top-left-bar {
-    position: fixed;
-    top: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.top-right-bar {
-    right: 12px;
-}
-
-.top-left-bar {
-    left: 12px;
-}
-
-.github-link,
-.icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    color: var(--muted);
-    transition: opacity 0.2s;
-    border-radius: var(--radius-base);
-    background: var(--gray-2);
-    border: none;
-    cursor: pointer;
-}
-
-.github-link:hover,
-.icon-button:hover {
-    opacity: 0.5;
-}
-
-.theme-switcher {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px;
-    border-radius: var(--radius-small);
-    background: var(--gray-2);
-}
-
-.theme-switcher button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.theme-switcher button:hover {
-    opacity: 0.5;
-}
-
-.theme-switcher button[aria-pressed='true'] {
-    background: var(--gray-4);
-    color: var(--fg);
 }

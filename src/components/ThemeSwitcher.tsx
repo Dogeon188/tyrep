@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './ThemeSwitcher.css'
 
 type Theme = 'system' | 'light' | 'dark'
 
@@ -41,6 +42,8 @@ function applyTheme(theme: Theme) {
     else document.documentElement.dataset.theme = theme
 }
 
+const THEMES = ['system', 'dark', 'light'] as const
+
 export function ThemeSwitcher() {
     const [theme, setTheme] = useState<Theme>(
         () => (localStorage.getItem('theme') as Theme | null) ?? 'system'
@@ -51,9 +54,15 @@ export function ThemeSwitcher() {
         localStorage.setItem('theme', theme)
     }, [theme])
 
+    const index = THEMES.indexOf(theme)
+
     return (
         <span className="theme-switcher">
-            {(['system', 'dark', 'light'] as const).map((t) => (
+            <span
+                className="theme-switcher-highlight"
+                style={{ transform: `translateX(${index * 26}px)` }}
+            />
+            {THEMES.map((t) => (
                 <button
                     key={t}
                     type="button"

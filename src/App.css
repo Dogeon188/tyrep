@@ -132,3 +132,40 @@
     font-size: 0.8rem;
     margin-top: 1rem;
 }
+
+.top-right-bar,
+.top-left-bar {
+    position: fixed;
+    top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.top-right-bar {
+    right: 12px;
+}
+
+.top-left-bar {
+    left: 12px;
+}
+
+.github-link,
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--muted);
+    transition: opacity 0.2s;
+    border-radius: var(--radius-base);
+    background: var(--gray-2);
+    border: none;
+    cursor: pointer;
+}
+
+.github-link:hover,
+.icon-button:hover {
+    opacity: 0.5;
+}
