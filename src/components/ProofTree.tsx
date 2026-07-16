@@ -656,7 +656,10 @@ export function ProofTree({
     // ponytail: native View Transitions animate the reflow; browsers
     // without it just snap, no polyfill.
     const withViewTransition = (update: () => void) => {
-        if (document.startViewTransition)
+        if (
+            document.startViewTransition &&
+            !('reduceMotion' in document.documentElement.dataset)
+        )
             document.startViewTransition(() => flushSync(update))
         else update()
     }

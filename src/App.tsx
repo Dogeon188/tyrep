@@ -5,6 +5,7 @@ import { GithubLink } from './components/GithubLink'
 import { CtxHint, TermHint } from './components/InputHints'
 import { LabeledTextarea } from './components/LabeledTextarea'
 import { ProofTree } from './components/ProofTree'
+import { ReduceMotionToggle } from './components/ReduceMotionToggle'
 import { ReferenceModal } from './components/ReferenceModal'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { proofToLatex } from './lambda/latex'
@@ -226,6 +227,7 @@ function App() {
             />
 
             <div className="top-right-bar">
+                <ReduceMotionToggle />
                 <ThemeSwitcher />
                 <GithubLink />
             </div>

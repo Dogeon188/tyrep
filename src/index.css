@@ -91,6 +91,14 @@
     --yellow-11: #f5e147;
 }
 
+:root[data-reduce-motion] {
+    scroll-behavior: auto;
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
 ::selection {
     color: var(--selection-fg);
     background-color: var(--selection-bg);
