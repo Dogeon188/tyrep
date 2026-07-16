@@ -1,7 +1,7 @@
-import { BOOL, BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
 import type { ParseOptions } from './parser'
+import { BOOL, BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
 import type { Ctx, Effect, Term, Type } from './types'
-import { effectToString, typesEqual, typeToString, unifyTypes } from './types'
+import { typesEqual, typeToString, unifyTypes } from './types'
 
 // Replaces eq's placeholder type-variable with the concrete type it was
 // applied to (only substitution this toy type system needs).
