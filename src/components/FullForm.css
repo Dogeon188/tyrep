@@ -4,6 +4,10 @@
     word-break: break-word;
 }
 
+.full-form.full-form-large {
+    font-size: 1rem;
+}
+
 .full-form .bracket-hint {
     color: color-mix(in srgb, var(--bracket-color) 55%, var(--muted));
     transition: color 0.1s ease;

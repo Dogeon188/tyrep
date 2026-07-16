@@ -1,5 +1,5 @@
 - [ ] default example, toggle exceptions → outermost derivation font size not synced
 - [ ] toggleable AST visualization (replacing proof tree)
 - [ ] in mobile view put expr fullform top of desc
-- [ ] expr fullform be larger font
+- [x] expr fullform be larger font
 - [x] put rules at bottom of reference modal

@@ -64,7 +64,7 @@ function analyzeKeywords(text: string) {
     return ranges
 }
 
-export function FullForm({ text }: { text: string }) {
+export function FullForm({ text, className }: { text: string; className?: string }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const chars = useMemo(() => Array.from(text), [text])
     const bracketInfo = useMemo(() => analyzeBrackets(chars), [chars])
@@ -151,7 +151,10 @@ export function FullForm({ text }: { text: string }) {
     }, [chars, bracketInfo, keywordInfo])
 
     return (
-        <div className="full-form" ref={containerRef}>
+        <div
+            className={`full-form${className ? ` ${className}` : ''}`}
+            ref={containerRef}
+        >
             <Calligraph>{text}</Calligraph>
         </div>
     )

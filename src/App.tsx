@@ -176,7 +176,7 @@ function App() {
                         />
                     }
                 >
-                    {fullForm && <FullForm text={fullForm} />}
+                    {fullForm && <FullForm text={fullForm} className="full-form-large" />}
                 </LabeledTextarea>
             </div>
 
