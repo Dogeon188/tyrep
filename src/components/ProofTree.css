@@ -1,3 +1,22 @@
+/* Added/removed elements (snapshot with no counterpart) fade in place at
+   their own position instead of sliding with the surrounding layout. */
+@keyframes vt-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+@keyframes vt-fade-out {
+    to {
+        opacity: 0;
+    }
+}
+::view-transition-old(*):only-child {
+    animation-name: vt-fade-out;
+}
+::view-transition-new(*):only-child {
+    animation-name: vt-fade-in;
+}
+
 .proof-tree-panel {
     display: flex;
     flex-direction: column;

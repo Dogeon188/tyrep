@@ -5,6 +5,7 @@ import {
     type CSSProperties,
     type ReactNode
 } from 'react'
+import { flushSync } from 'react-dom'
 import { TYVAR } from '../lambda/primitives'
 import { RULES } from '../lambda/rules'
 import type { ProofNode } from '../lambda/typecheck'
@@ -26,6 +27,18 @@ const varColor = (i: number) => `hsl(${(i * 137.508 + 180) % 360} 70% 45%)`
 // Same golden-angle spread again, phase-shifted a third turn so effect
 // composition colors don't collide with env/var hues at the same index.
 const effectColor = (i: number) => `hsl(${(i * 137.508 + 60) % 360} 70% 45%)`
+
+// Stable per-Term view-transition-name so collapsing/expanding animates each
+// remaining rule to its new position (and morphs the toggled node) via the
+// native View Transitions API. Terms are unique AST objects, so names never
+// collide within one tree.
+let nextTermId = 0
+const termIds = new WeakMap<Term, number>()
+function termTransitionName(t: Term) {
+    let id = termIds.get(t)
+    if (id === undefined) termIds.set(t, (id = nextTermId++))
+    return `rule-${id}`
+}
 
 // A node can be the source of both its own top-level effect (rendered right
 // after its type, e.g. "T !ϵ") and, separately, the latent effect embedded
@@ -450,11 +463,20 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
     return (
         <span className="judgment">
             {!compact && (
-                <>
+                // inline-block + own view-transition-name so compact toggling
+                // fades this prefix in place instead of sliding it around
+                // inside the rule's morphing snapshot.
+                <span
+                    style={{
+                        display: 'inline-block',
+                        viewTransitionName: `env-${termTransitionName(n.term)}`
+                    }}
+                >
                     {envNode(n.ctx, labels.envs)}{' '}
-                    <span className="judgment-separator">⊢</span>{' '}
-                </>
+                    <span className="judgment-separator">⊢</span>
+                </span>
             )}
+            {!compact && ' '}
             {termNode(n.term, n.ctx, labels.binders)}{' '}
             <span className="judgment-separator">:</span>{' '}
             {typeNode(n.type, showEffects, hoveredEffectSources?.get(n)?.latent)}
@@ -489,9 +511,10 @@ function Rule({
     const isMergedEnvRoot =
         compact && envIndex !== undefined && envIndex !== parentEnvIndex
     const envVisible = isMergedEnvRoot && hoveredEnv === envIndex
-    const envStyle = isMergedEnvRoot
-        ? ({ '--env-color': envColor(envIndex) } as CSSProperties)
-        : undefined
+    const envStyle = {
+        ...(isMergedEnvRoot ? { '--env-color': envColor(envIndex) } : undefined),
+        viewTransitionName: termTransitionName(n.term)
+    } as CSSProperties
 
     if (collapsed.has(n.term)) {
         const idx = labels.collapseIndices.get(n.term)!
@@ -548,10 +571,27 @@ function Rule({
                             hoveredEffectSources?.get(n)?.latent
                         )}
                         {showEffects && <EffectAnnotation n={n} />}
-                        {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
+                        {!compact && (
+                            <>
+                                {' '}
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        viewTransitionName: `in-${termTransitionName(n.term)}`
+                                    }}
+                                >
+                                    ∈ {envNode(n.ctx, labels.envs)}
+                                </span>
+                            </>
+                        )}
                     </span>
                 </div>
-                <div className="line">
+                <div
+                    className="line"
+                    style={{
+                        viewTransitionName: `line-${termTransitionName(n.term)}`
+                    }}
+                >
                     <RuleName rule="T-Var" showEffects={showEffects} />
                     {foldToggle}
                 </div>
@@ -577,7 +617,10 @@ function Rule({
                     />
                 ))}
             </div>
-            <div className="line">
+            <div
+                className="line"
+                style={{ viewTransitionName: `line-${termTransitionName(n.term)}` }}
+            >
                 <RuleName rule={n.rule} showEffects={showEffects} />
                 {foldToggle}
             </div>
@@ -610,13 +653,22 @@ export function ProofTree({
     > | null>(null)
     const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
     const [copied, setCopied] = useState(false)
+    // ponytail: native View Transitions animate the reflow; browsers
+    // without it just snap, no polyfill.
+    const withViewTransition = (update: () => void) => {
+        if (document.startViewTransition)
+            document.startViewTransition(() => flushSync(update))
+        else update()
+    }
     const toggleCollapse = (t: Term) =>
-        setCollapsed((prev) => {
-            const next = new Set(prev)
-            if (next.has(t)) next.delete(t)
-            else next.add(t)
-            return next
-        })
+        withViewTransition(() =>
+            setCollapsed((prev) => {
+                const next = new Set(prev)
+                if (next.has(t)) next.delete(t)
+                else next.add(t)
+                return next
+            })
+        )
     const envs = new Map<string, Ctx>()
     collectEnvs(root, envs)
     const entries = [...envs.values()].filter((ctx) => ctx.length > 0)
@@ -655,7 +707,7 @@ export function ProofTree({
                         className="style-toggle"
                         aria-pressed={compact}
                         title="Toggle compact (sequent-style) judgments"
-                        onClick={() => setCompact((v) => !v)}
+                        onClick={() => withViewTransition(() => setCompact((v) => !v))}
                     >
                         ▷ Compact
                     </button>
