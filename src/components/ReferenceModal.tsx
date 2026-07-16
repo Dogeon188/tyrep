@@ -69,6 +69,68 @@ export function ReferenceModal({
                 </div>
             )}
 
+            {(exceptions || effects) && (
+                <div className="rules-dialog-section">
+                    <div className="rules-dialog-subhead">Effects</div>
+                    <p className="rules-dialog-note">
+                        <code>!p</code> pure
+                        {exceptions && (
+                            <>
+                                , <code>!i</code> impure (may raise)
+                            </>
+                        )}
+                        {effects && (
+                            <>
+                                <br />
+                                <code>!τ</code> an escaping <code>op</code> expecting a
+                                τ-typed continuation
+                            </>
+                        )}
+                        <br />
+                        arrows carry their body&apos;s effect
+                    </p>
+                    <div className="rules-row">
+                        <span className="judgment">p ∘ ϵ = ϵ</span>
+                        {exceptions && <span className="judgment">i ∘ ϵ = i</span>}
+                        {exceptions && <span className="judgment">p • ϵ = p</span>}
+                        {exceptions && <span className="judgment">i • ϵ = ϵ</span>}
+                    </div>
+                    <p className="rules-dialog-note">
+                        ∘: T-App/Neg/Add1/Eq — impure if any part is
+                        {exceptions && (
+                            <>
+                                <br />
+                                •: T-Try — pure if the handled branch can&apos;t raise
+                            </>
+                        )}
+                        {effects && (
+                            <>
+                                <br />
+                                T-Handle fully discharges its body&apos;s effect (ϵ')
+                            </>
+                        )}
+                    </p>
+                </div>
+            )}
+            {compact && (
+                <div className="rules-dialog-section">
+                    <div className="rules-dialog-subhead">Uncurried Types</div>
+                    <p className="rules-dialog-note">
+                        High-order functions can be seen as a normal function whose input
+                        is a Cartesian product of types, e.g. <code>A → B → C</code> to{' '}
+                        <code>A × B → C</code>. See{' '}
+                        <a
+                            href="https://en.wikipedia.org/wiki/Currying"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Wikipedia: Currying
+                        </a>
+                        .
+                    </p>
+                </div>
+            )}
+
             <div className="rules-dialog-section">
                 <div className="rules-dialog-subhead">Rules</div>
                 <div className="rules-row">
@@ -115,67 +177,6 @@ export function ReferenceModal({
                     )}
                 </div>
             </div>
-            {(exceptions || effects) && (
-                <div className="rules-dialog-section">
-                    <div className="rules-dialog-subhead">Effects</div>
-                    <p className="rules-dialog-note">
-                        <code>!p</code> pure
-                        {exceptions && (
-                            <>
-                                , <code>!i</code> impure (may raise)
-                            </>
-                        )}
-                        {effects && (
-                            <>
-                                <br />
-                                <code>!τ</code> an escaping <code>op</code> expecting a
-                                τ-typed continuation
-                            </>
-                        )}
-                        <br />
-                        arrows carry their body&apos;s effect
-                    </p>
-                    <div className="rules-row">
-                        <span className="judgment">p ∘ ϵ = ϵ</span>
-                        {exceptions && <span className="judgment">i ∘ ϵ = i</span>}
-                        {exceptions && <span className="judgment">p • ϵ = p</span>}
-                        {exceptions && <span className="judgment">i • ϵ = ϵ</span>}
-                    </div>
-                    <p className="rules-dialog-note">
-                        ∘: T-App/Neg/Add1/Eq — impure if any part is
-                        {exceptions && (
-                            <>
-                                <br />
-                                •: T-Try — pure if the handled branch can&apos;t raise
-                            </>
-                        )}
-                        {effects && (
-                            <>
-                                <br />
-                                T-Handle fully discharges its body&apos;s effect (ϵ')
-                            </>
-                        )}
-                    </p>
-                </div>
-            )}
-            {compact && (
-                <>
-                    <div className="rules-dialog-subhead">Uncurried Types</div>
-                    <p className="rules-dialog-note">
-                        High-order functions can be seen as a normal function whose input
-                        is a Cartesian product of types, e.g. <code>A → B → C</code> to{' '}
-                        <code>A × B → C</code>. See{' '}
-                        <a
-                            href="https://en.wikipedia.org/wiki/Currying"
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            Wikipedia: Currying
-                        </a>
-                        .
-                    </p>
-                </>
-            )}
         </dialog>
     )
 }
