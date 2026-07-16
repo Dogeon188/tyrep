@@ -79,6 +79,15 @@ export function FullForm({ text }: { text: string }) {
                 container.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')
             )
 
+        // Expression is changing: strip old bracket colors first so stale
+        // colors don't linger on mismatched spans during Calligraph's
+        // add/remove animation. applyColors() below fades new colors back
+        // in via the CSS transition once the new text settles.
+        getSpans().forEach((span) => {
+            span.classList.remove('bracket-hint')
+            span.style.removeProperty('--bracket-color')
+        })
+
         // Calligraph animates char add/remove via AnimatePresence, so mid-transition
         // the DOM briefly holds both outgoing and incoming spans. Skip applying until
         // the span count matches the text again; the MutationObserver retries on
