@@ -68,7 +68,7 @@ export function TermHint({
                 <>
                     <hr />
                     <span>
-                        operation: <code>op</code>
+                        anon effect: <code>op</code>
                     </span>
                     <br />
                     <span>

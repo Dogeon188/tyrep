@@ -1,11 +1,13 @@
 import {
     createContext,
     useContext,
+    useEffect,
+    useRef,
     useState,
     type CSSProperties,
     type ReactNode
 } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { TYVAR } from '../lambda/primitives'
 import { RULES } from '../lambda/rules'
 import type { ProofNode } from '../lambda/typecheck'
@@ -15,6 +17,29 @@ import './ProofTree.css'
 import { RuleDiagram } from './RuleDiagram'
 
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
+
+// Anchors a tooltip to its trigger with `position: fixed` (computed from the
+// trigger's viewport rect) instead of `position: absolute`, so it floats over
+// .proof-tree-scroll's horizontal scrollbar instead of expanding its
+// scrollable content size. Recomputed on scroll/resize while visible so it
+// tracks the trigger as the tree scrolls under it.
+function useFloatingRect<T extends HTMLElement>() {
+    const ref = useRef<T>(null)
+    const [rect, setRect] = useState<DOMRect | null>(null)
+    const update = () => setRect(ref.current?.getBoundingClientRect() ?? null)
+    const hide = () => setRect(null)
+    useEffect(() => {
+        if (!rect) return
+        window.addEventListener('scroll', update, true)
+        window.addEventListener('resize', update)
+        return () => {
+            window.removeEventListener('scroll', update, true)
+            window.removeEventListener('resize', update)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [!!rect])
+    return { ref, rect, show: update, hide }
+}
 
 // Golden-angle hue step spreads colors evenly regardless of how many
 // distinct environments show up.
@@ -353,6 +378,7 @@ function effectFormula(n: ProofNode): EffectSegment[] | null {
 
 function EffectAnnotation({ n }: { n: ProofNode }) {
     const { hoveredEffectSources, setHoveredEffectSources } = useContext(HoverCtx)
+    const { ref: infoRef, rect, show, hide } = useFloatingRect<HTMLSpanElement>()
     const ownColor = hoveredEffectSources?.get(n)?.own
     const formula = effectFormula(n)
     let colorIndex = 0
@@ -389,14 +415,40 @@ function EffectAnnotation({ n }: { n: ProofNode }) {
             </span>
             {formula && (
                 <span
+                    ref={infoRef}
                     className="effect-info"
                     tabIndex={0}
-                    onMouseEnter={() => setHoveredEffectSources(sources)}
-                    onMouseLeave={() => setHoveredEffectSources(null)}
-                    onFocus={() => setHoveredEffectSources(sources)}
-                    onBlur={() => setHoveredEffectSources(null)}
+                    onMouseEnter={() => {
+                        setHoveredEffectSources(sources)
+                        show()
+                    }}
+                    onMouseLeave={() => {
+                        setHoveredEffectSources(null)
+                        hide()
+                    }}
+                    onFocus={() => {
+                        setHoveredEffectSources(sources)
+                        show()
+                    }}
+                    onBlur={() => {
+                        setHoveredEffectSources(null)
+                        hide()
+                    }}
                 >
-                    ?<span className="effect-tooltip">{rendered}</span>
+                    ?
+                    {rect &&
+                        createPortal(
+                            <span
+                                className="effect-tooltip"
+                                style={{
+                                    left: rect.left + rect.width / 2,
+                                    top: rect.top
+                                }}
+                            >
+                                {rendered}
+                            </span>,
+                            document.getElementById('root')!
+                        )}
                 </span>
             )}
         </>
@@ -443,16 +495,32 @@ function RuleName({
     rule: ProofNode['rule']
     showEffects: boolean
 }) {
+    const { ref, rect, show, hide } = useFloatingRect<HTMLSpanElement>()
     return (
-        <span className="rule-name" tabIndex={0}>
+        <span
+            ref={ref}
+            className="rule-name"
+            tabIndex={0}
+            onMouseEnter={show}
+            onMouseLeave={hide}
+            onFocus={show}
+            onBlur={hide}
+        >
             {rule}
-            <span className="effect-tooltip rule-tooltip">
-                <RuleDiagram
-                    premises={RULES[rule].premises(showEffects)}
-                    conclusion={RULES[rule].conclusion(showEffects)}
-                    name={rule}
-                />
-            </span>
+            {rect &&
+                createPortal(
+                    <span
+                        className="effect-tooltip rule-tooltip"
+                        style={{ left: rect.right, top: rect.bottom }}
+                    >
+                        <RuleDiagram
+                            premises={RULES[rule].premises(showEffects)}
+                            conclusion={RULES[rule].conclusion(showEffects)}
+                            name={rule}
+                        />
+                    </span>,
+                    document.getElementById('root')!
+                )}
         </span>
     )
 }

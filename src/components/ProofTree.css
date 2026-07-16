@@ -199,7 +199,7 @@
     cursor: help;
 }
 
-.rule-name .rule-name {
+.rule-tooltip .rule-name {
     padding-right: 0.4em;
     background: var(--bg);
     border-radius: var(--radius-small);
@@ -336,14 +336,15 @@
     background: color-mix(in srgb, var(--effect-color) 15%, transparent);
 }
 
+/* Positioned with `position: fixed` and inline left/top (computed from the
+   trigger's viewport rect in JS) rather than `position: absolute` anchored
+   to the trigger. Fixed positioning escapes .proof-tree-scroll's scrollable
+   overflow area entirely, so an open tooltip floats over the scrollbar
+   instead of stretching the container's scrollWidth. */
 .effect-tooltip {
-    display: none;
-    position: absolute;
+    position: fixed;
     z-index: 1;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-bottom: 0.3em;
+    transform: translate(-50%, calc(-100% - 0.3em));
     padding: 0.3rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-small);
@@ -354,22 +355,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.effect-info:hover .effect-tooltip,
-.effect-info:focus .effect-tooltip {
-    display: block;
-}
-
 .rule-tooltip {
-    bottom: auto;
-    top: 100%;
-    left: auto;
-    right: 0;
-    transform: none;
-    margin-bottom: 0;
-    margin-top: 0.3em;
-}
-
-.rule-name:hover .rule-tooltip,
-.rule-name:focus .rule-tooltip {
-    display: block;
+    transform: translate(-100%, 0.3em);
 }
