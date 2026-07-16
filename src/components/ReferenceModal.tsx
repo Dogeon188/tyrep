@@ -1,40 +1,15 @@
-import { type ReactNode } from 'react'
 import { RuleDiagram } from './RuleDiagram'
+import { PRIMITIVE_AXIOMS, RULES } from '../lambda/rules'
+import type { ProofNode } from '../lambda/typecheck'
 import './ProofTree.css'
 import './ReferenceModal.css'
 
-function Axiom({ conclusion, name }: { conclusion: ReactNode; name: string }) {
-    return <RuleDiagram premises={[]} conclusion={conclusion} name={name} />
-}
-
-function Rule1({
-    premise,
-    conclusion,
-    name
-}: {
-    premise: ReactNode
-    conclusion: ReactNode
-    name: string
-}) {
-    return <RuleDiagram premises={[premise]} conclusion={conclusion} name={name} />
-}
-
-function Rule2({
-    premise1,
-    premise2,
-    conclusion,
-    name
-}: {
-    premise1: ReactNode
-    premise2: ReactNode
-    conclusion: ReactNode
-    name: string
-}) {
+function Rule({ rule, showEffects }: { rule: ProofNode['rule']; showEffects: boolean }) {
     return (
         <RuleDiagram
-            premises={[premise1, premise2]}
-            conclusion={conclusion}
-            name={name}
+            premises={RULES[rule].premises(showEffects)}
+            conclusion={RULES[rule].conclusion(showEffects)}
+            name={rule}
         />
     )
 }
@@ -95,134 +70,28 @@ export function ReferenceModal({
             <div className="rules-dialog-section">
                 <div className="rules-dialog-subhead">Rules</div>
                 <div className="rules-row">
-                    <Axiom
-                        conclusion={
-                            showEffects ? (
-                                <>x : T ∈ Γ ⊢ x : T ! p</>
-                            ) : (
-                                <>x : T ∈ Γ ⊢ x : T</>
-                            )
-                        }
-                        name="T-Var"
-                    />
-                    <Rule1
-                        premise={
-                            showEffects ? 'Γ, x:T₁ ⊢ e : T₂ ! ϵ' : 'Γ, x:T₁ ⊢ e : T₂'
-                        }
-                        conclusion={
-                            showEffects
-                                ? 'Γ ⊢ λx:T₁.e : (T₁ → T₂ !ϵ) ! p'
-                                : 'Γ ⊢ λx:T₁.e : T₁ → T₂'
-                        }
-                        name="T-Abs"
-                    />
-                    <Rule2
-                        premise1={
-                            showEffects ? 'Γ ⊢ f : (T₁ → T₂ !ϵ₃) ! ϵ₁' : 'Γ ⊢ f : T₁ → T₂'
-                        }
-                        premise2={showEffects ? 'Γ ⊢ a : T₁ ! ϵ₂' : 'Γ ⊢ a : T₁'}
-                        conclusion={
-                            showEffects ? 'Γ ⊢ f a : T₂ ! (ϵ₁ ∘ ϵ₂ ∘ ϵ₃)' : 'Γ ⊢ f a : T₂'
-                        }
-                        name="T-App"
-                    />
-                    {primitives && (
-                        <>
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ true : Bool ! p</>
-                                    ) : (
-                                        <>∅ ⊢ true : Bool</>
-                                    )
-                                }
-                                name="T-Lit"
+                    <Rule rule="T-Var" showEffects={showEffects} />
+                    <Rule rule="T-Abs" showEffects={showEffects} />
+                    <Rule rule="T-App" showEffects={showEffects} />
+                    {primitives &&
+                        PRIMITIVE_AXIOMS.map((axiom, i) => (
+                            <RuleDiagram
+                                key={i}
+                                premises={[]}
+                                conclusion={axiom.conclusion(showEffects)}
+                                name={axiom.name}
                             />
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ false : Bool ! p</>
-                                    ) : (
-                                        <>∅ ⊢ false : Bool</>
-                                    )
-                                }
-                                name="T-Lit"
-                            />
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ n : Int ! p (n = 0, 1, 2, ...)</>
-                                    ) : (
-                                        <>∅ ⊢ n : Int (n = 0, 1, 2, ...)</>
-                                    )
-                                }
-                                name="T-Lit"
-                            />
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ neg : (Bool → Bool !p) ! p</>
-                                    ) : (
-                                        <>∅ ⊢ neg : Bool → Bool</>
-                                    )
-                                }
-                                name="T-Prim"
-                            />
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ add1 : (Int → Int !p) ! p</>
-                                    ) : (
-                                        <>∅ ⊢ add1 : Int → Int</>
-                                    )
-                                }
-                                name="T-Prim"
-                            />
-                            <Axiom
-                                conclusion={
-                                    showEffects ? (
-                                        <>∅ ⊢ eq : (α → (α → Bool !p) !p) ! p</>
-                                    ) : (
-                                        <>∅ ⊢ eq : α → α → Bool</>
-                                    )
-                                }
-                                name="T-Prim"
-                            />
-                        </>
-                    )}
+                        ))}
                     {exceptions && (
                         <>
-                            <Axiom conclusion={<>Γ ⊢ error : τ ! i</>} name="T-Error" />
-                            <Rule2
-                                premise1="Γ ⊢ e₁ : τ ! ϵ₁"
-                                premise2="Γ ⊢ e₂ : τ ! ϵ₂"
-                                conclusion="Γ ⊢ try e₁ with e₂ : τ ! (ϵ₁ • ϵ₂)"
-                                name="T-Try"
-                            />
+                            <Rule rule="T-Error" showEffects={showEffects} />
+                            <Rule rule="T-Try" showEffects={showEffects} />
                         </>
                     )}
                     {effects && (
                         <>
-                            <Axiom conclusion={<>Γ ⊢ op : τ ! τ</>} name="T-Op" />
-                            <RuleDiagram
-                                premises={[
-                                    <>Γ ⊢ e : σ ! ϵ'</>,
-                                    <>
-                                        Γ, x:σ ⊢ e<sub>r</sub> : τ ! ϵ
-                                    </>,
-                                    <>
-                                        Γ, k:ϵ'→τ !ϵ ⊢ e<sub>o</sub> : τ ! ϵ
-                                    </>
-                                ]}
-                                conclusion={
-                                    <>
-                                        Γ ⊢ handle e with {'{'}x.e<sub>r</sub>; k.e
-                                        <sub>o</sub>
-                                        {'}'} : τ ! ϵ
-                                    </>
-                                }
-                                name="T-Handle"
-                            />
+                            <Rule rule="T-Op" showEffects={showEffects} />
+                            <Rule rule="T-Handle" showEffects={showEffects} />
                         </>
                     )}
                 </div>

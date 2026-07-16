@@ -59,6 +59,8 @@ export function typeToUncurriedString(t: Type): string {
     const argStrs = args.map((a) =>
         a.kind === 'arrow' ? `(${typeToUncurriedString(a)})` : typeToUncurriedString(a)
     )
+    if (argStrs.length === 0) return typeToUncurriedString(ret)
+    if (argStrs.length === 1) return `${argStrs[0]} → ${typeToUncurriedString(ret)}`
     return `(${argStrs.join(' × ')}) → ${typeToUncurriedString(ret)}`
 }
 

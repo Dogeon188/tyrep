@@ -39,9 +39,6 @@ export function TermHint({
                 application: <code>f x</code>
             </span>
             <br />
-            <span>
-                arrow type: <code>T -&gt; T</code> or <code>T → T</code>
-            </span>
             {primitives && (
                 <>
                     <hr />
