@@ -144,6 +144,26 @@ function EnvBadge({ i }: { i: number }) {
     )
 }
 
+// The direct parent of a Γ is the longest other labeled Γ that's a strict
+// prefix of it (i.e. the binding it was most recently extended from).
+function directParent(
+    ctx: Ctx,
+    entries: Ctx[],
+    labels: Map<string, number>
+): number | undefined {
+    let best: number | undefined
+    for (const other of entries) {
+        if (
+            other.length < ctx.length &&
+            JSON.stringify(ctx.slice(0, other.length)) === JSON.stringify(other) &&
+            (best === undefined || other.length > entries[best].length)
+        ) {
+            best = labels.get(JSON.stringify(other))
+        }
+    }
+    return best
+}
+
 function envNode(ctx: Ctx, labels: Map<string, number>) {
     if (ctx.length === 0) return '∅'
     const i = labels.get(JSON.stringify(ctx))
@@ -843,6 +863,23 @@ export function ProofTree({
                             >
                                 <div className="environment-entry-title">
                                     <EnvBadge i={i} />
+                                    {(() => {
+                                        const parent = directParent(
+                                            ctx,
+                                            entries,
+                                            labels.envs
+                                        )
+                                        return (
+                                            <span className="environment-parent">
+                                                {' ⊇ '}
+                                                {parent !== undefined ? (
+                                                    <EnvBadge i={parent} />
+                                                ) : (
+                                                    'Γ'
+                                                )}
+                                            </span>
+                                        )
+                                    })()}
                                 </div>
                                 <table className="environment-table">
                                     <tbody>

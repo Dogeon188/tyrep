@@ -143,6 +143,26 @@ function ctxLatex(
         .join(', ')
 }
 
+// The direct parent of a Γ is the longest other labeled Γ that's a strict
+// prefix of it (i.e. the binding it was most recently extended from).
+function directParent(
+    ctx: Ctx,
+    entries: Ctx[],
+    labels: Map<string, number>
+): number | undefined {
+    let best: number | undefined
+    for (const other of entries) {
+        if (
+            other.length < ctx.length &&
+            JSON.stringify(ctx.slice(0, other.length)) === JSON.stringify(other) &&
+            (best === undefined || other.length > entries[best].length)
+        ) {
+            best = labels.get(JSON.stringify(other))
+        }
+    }
+    return best
+}
+
 function envLatex(
     ctx: Ctx,
     labels: Map<string, number>,
@@ -208,9 +228,14 @@ export function proofToLatex(root: ProofNode, exceptions = false): string {
     collectShadowBinders(root, byName)
     const binderSubs = buildBinderSubs(byName)
 
-    const legend = entries.map(
-        (ctx, i) => `\\[\\Gamma_{${i}} = ${ctxLatex(ctx, binderSubs, exceptions)}\\]`
-    )
+    const legend = entries.map((ctx, i) => {
+        const parent = directParent(ctx, entries, labels)
+        const parentNote =
+            parent !== undefined
+                ? ` \\quad (\\Gamma_{${i}} \\supseteq \\Gamma_{${parent}})`
+                : ` \\quad (\\Gamma_{${i}} \\supseteq \\Gamma)`
+        return `\\[\\Gamma_{${i}} = ${ctxLatex(ctx, binderSubs, exceptions)}${parentNote}\\]`
+    })
 
     return [
         ...legend,

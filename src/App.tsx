@@ -158,7 +158,7 @@ function App() {
                 </div>
                 <LabeledTextarea
                     id="ctx-input"
-                    label="Context (Γ₀)"
+                    label="Context (Γ)"
                     value={ctxSrc}
                     onChange={setCtxSrc}
                     hint={<CtxHint />}
