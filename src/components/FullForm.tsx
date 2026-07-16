@@ -155,7 +155,11 @@ export function FullForm({ text, className }: { text: string; className?: string
             className={`full-form${className ? ` ${className}` : ''}`}
             ref={containerRef}
         >
-            <Calligraph>{text}</Calligraph>
+            {'reduceMotion' in document.documentElement.dataset ? (
+                text
+            ) : (
+                <Calligraph>{text}</Calligraph>
+            )}
         </div>
     )
 }
