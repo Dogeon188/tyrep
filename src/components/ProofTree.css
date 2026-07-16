@@ -170,6 +170,7 @@
     display: inline-flex;
     flex-direction: column;
     align-items: center;
+    max-width: 80vw;
     padding-right: 1.8em;
     border-radius: var(--radius-small);
     transition: background 0.1s;
@@ -177,8 +178,10 @@
 
 .premises {
     display: inline-flex;
-    gap: 1.5rem;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 1.5rem;
+    align-items: baseline;
 }
 
 .line {
