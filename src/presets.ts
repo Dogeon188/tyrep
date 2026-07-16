@@ -117,6 +117,14 @@ export const PRESETS = [
         effects: false
     },
     {
+        name: 'Open Premise: Mismatched Neg',
+        ctx: '',
+        term: 'try (neg 1) with false',
+        primitives: true,
+        exceptions: true,
+        effects: false
+    },
+    {
         name: 'Open Premise: Mismatched Effects',
         ctx: '',
         term: 'handle (neg op) with {x. x; k. k 2}',
