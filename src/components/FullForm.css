@@ -11,6 +11,7 @@
 .full-form .bracket-hint {
     color: color-mix(in srgb, var(--bracket-color) 55%, var(--muted));
     transition: color 0.1s ease;
+    cursor: crosshair;
 }
 
 .full-form .paren-match {

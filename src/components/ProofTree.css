@@ -170,7 +170,6 @@
     display: inline-flex;
     flex-direction: column;
     align-items: center;
-    max-width: 80vw;
     padding-right: 1.8em;
     border-radius: var(--radius-small);
     transition: background 0.1s;
@@ -178,10 +177,18 @@
 
 .premises {
     display: inline-flex;
-    flex-wrap: wrap;
     justify-content: center;
     gap: 0 1.5rem;
+    align-items: flex-end;
+}
+
+.rules-row .rule {
     align-items: baseline;
+    max-width: 80vw;
+}
+
+.rules-row .premises {
+    flex-wrap: wrap;
 }
 
 .line {
@@ -262,6 +269,10 @@
     left: 100%;
     top: 0.6em;
     margin-left: 0.4em;
+}
+
+.term-span {
+    cursor: crosshair !important;
 }
 
 .term-span:hover {

@@ -600,7 +600,7 @@ function Rule({
                     className="judgment collapse-toggle"
                     onClick={() => toggleCollapse(n.term)}
                 >
-                    D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
+                    D{subscript(idx)} ⇒ {termNode(n.term, n.ctx, labels.binders)} :{' '}
                     {typeNode(n.type, showEffects, hoveredEffectSources?.get(n)?.latent)}
                     {showEffects && <EffectAnnotation n={n} />}
                 </span>

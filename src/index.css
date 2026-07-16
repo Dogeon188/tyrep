@@ -190,3 +190,7 @@ code {
     padding: 4px 8px;
     background: var(--kbd-bg);
 }
+
+.sc {
+    font-variant-caps: small-caps;
+}

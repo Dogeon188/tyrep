@@ -1,8 +1,8 @@
-import { RuleDiagram } from './RuleDiagram'
 import { LITERAL_AXIOMS, PRIM_FUNCTION_AXIOMS, RULES } from '../lambda/rules'
 import type { ProofNode } from '../lambda/typecheck'
 import './ProofTree.css'
 import './ReferenceModal.css'
+import { RuleDiagram } from './RuleDiagram'
 
 function Rule({ rule, showEffects }: { rule: ProofNode['rule']; showEffects: boolean }) {
     return (
@@ -57,13 +57,8 @@ export function ReferenceModal({
                     </div>
                     {exceptions && (
                         <p className="rules-dialog-note">
-                            <code>⊥</code>: type of <code>error</code>, equal to any type
-                        </p>
-                    )}
-                    {effects && (
-                        <p className="rules-dialog-note">
-                            <code>⊥</code>: also stands for <code>op</code>'s still-open
-                            type, until pinned down by its context
+                            <code>⊥</code>: "any" i.e. open type (also for{' '}
+                            <code>error</code>)
                         </p>
                     )}
                 </div>
@@ -96,17 +91,20 @@ export function ReferenceModal({
                         {exceptions && <span className="judgment">i • ϵ = ϵ</span>}
                     </div>
                     <p className="rules-dialog-note">
-                        ∘: T-App/Neg/Add1/Eq — impure if any part is
+                        ∘: <span className="sc">T-App/Neg/Add1/Eq</span> — impure if any
+                        part is
                         {exceptions && (
                             <>
                                 <br />
-                                •: T-Try — pure if the handled branch can&apos;t raise
+                                •: <span className="sc">T-Try</span> — pure if the handled
+                                branch can&apos;t raise
                             </>
                         )}
                         {effects && (
                             <>
                                 <br />
-                                T-Handle fully discharges its body&apos;s effect (ϵ')
+                                <span className="sc">T-Handle</span> fully discharges its
+                                body&apos;s effect (ϵ')
                             </>
                         )}
                     </p>
