@@ -28,9 +28,9 @@ export function LabeledTextarea({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                 />
+                {children}
                 <div className="syntax-hint">{hint}</div>
             </div>
-            {children}
         </div>
     )
 }
