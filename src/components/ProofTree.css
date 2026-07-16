@@ -133,6 +133,12 @@
     cursor: help;
 }
 
+.rule-name .rule-name {
+    padding-right: 0.4em;
+    background: var(--bg);
+    border-radius: var(--radius-small);
+}
+
 .proof-tree-panel.compact .rule-name {
     display: none;
 }
