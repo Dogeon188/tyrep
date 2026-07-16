@@ -33,7 +33,7 @@ export function TermHint({
                 annotated lambda: <code>λx:T. e</code>
             </span>
             <br />
-            <span>inline annotation wins Γ if both are given</span>
+            <span>inline annotation wins Γ₀</span>
             <hr />
             <span>
                 application: <code>f x</code>

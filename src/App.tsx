@@ -185,7 +185,7 @@ function App() {
             {result.root && (
                 <div className="output">
                     <div className="result-type">
-                        Result type:{' '}
+                        <span className="input-label">Result Type</span>
                         <FullForm
                             text={
                                 compact
