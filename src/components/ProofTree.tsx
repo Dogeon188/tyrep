@@ -5,13 +5,13 @@ import {
     type CSSProperties,
     type ReactNode
 } from 'react'
-import type { ProofNode } from '../lambda/typecheck'
-import { RuleDiagram } from './RuleDiagram'
-import { RULES } from '../lambda/rules'
 import { TYVAR } from '../lambda/primitives'
+import { RULES } from '../lambda/rules'
+import type { ProofNode } from '../lambda/typecheck'
 import type { Ctx, Effect, Term, Type } from '../lambda/types'
 import { ctxToString, effectToString, typeToString } from '../lambda/types'
 import './ProofTree.css'
+import { RuleDiagram } from './RuleDiagram'
 
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
 
@@ -653,25 +653,41 @@ export function ProofTree({
                     <button
                         type="button"
                         className="style-toggle"
-                        title="Copy LaTeX to clipboard"
-                        onClick={() => {
-                            if (!latex) return
-                            navigator.clipboard.writeText(latex)
-                            setCopied(true)
-                            setTimeout(() => setCopied(false), 1500)
-                        }}
-                    >
-                        {copied ? 'Copied!' : 'Copy LaTeX'}
-                    </button>
-                    <button
-                        type="button"
-                        className="style-toggle"
                         aria-pressed={compact}
                         title="Toggle compact (sequent-style) judgments"
                         onClick={() => setCompact((v) => !v)}
                     >
                         ▷ Compact
                     </button>
+                    <span className="copy-latex-wrap">
+                        <button
+                            type="button"
+                            className="style-toggle icon-toggle"
+                            title="Copy LaTeX to clipboard"
+                            onClick={() => {
+                                if (!latex) return
+                                navigator.clipboard.writeText(latex)
+                                setCopied(true)
+                                setTimeout(() => setCopied(false), 1500)
+                            }}
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <rect x="9" y="9" width="12" height="12" rx="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                        </button>
+                        {copied && <span className="copy-latex-popup">Copied!</span>}
+                    </span>
                 </div>
                 <div className="proof-tree">
                     <Rule n={root} labels={labels} />

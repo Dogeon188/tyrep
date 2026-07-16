@@ -29,6 +29,53 @@
     color: var(--bg);
 }
 
+.icon-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    padding: 0;
+}
+
+.icon-toggle svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.copy-latex-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.copy-latex-popup {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 0.4em;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+    animation: copy-latex-fade 1.5s ease-out forwards;
+}
+
+@keyframes copy-latex-fade {
+    0%,
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
 .proof-tree-actions {
     align-self: flex-end;
     display: flex;
