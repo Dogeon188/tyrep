@@ -41,6 +41,12 @@
 
     font: 14px/21px var(--sans);
     letter-spacing: -0.09px;
+    /* Prevents mobile browsers' automatic text-inflation heuristic from
+       boosting font size differently across the proof tree's nested,
+       variable-width scrollable boxes (e.g. the outermost/widest rule
+       getting boosted while inner ones don't). */
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
     color-scheme: light dark;
     color: var(--fg);
     background: var(--bg);
