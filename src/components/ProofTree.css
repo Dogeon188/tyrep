@@ -246,6 +246,16 @@
     background: var(--accent-bg);
 }
 
+.rule.open {
+    color: #c0392b;
+    outline: 1px dashed #c0392b;
+    outline-offset: 0.2em;
+}
+
+.rule.open.active {
+    background: color-mix(in srgb, #c0392b 12%, var(--accent-bg));
+}
+
 .rule.compact-env.env-visible.active {
     background: color-mix(in srgb, var(--env-color) 12%, var(--accent-bg));
 }

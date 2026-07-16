@@ -62,6 +62,15 @@ export type ProofNode = {
         | 'T-Add1'
         | 'T-Eq'
     premises: ProofNode[]
+    // An unjustified leaf: the derivation couldn't actually produce this
+    // judgment (a type mismatch), so it's forced to the type its context
+    // demands and asserted bare — the PDFs' "open derivation" trick, applied
+    // to whichever leaf doesn't fit instead of just aborting the whole tree.
+    open?: boolean
+}
+
+function openLeaf(ctx: Ctx, term: Term, type: Type, effect: Effect = 'p'): ProofNode {
+    return { ctx, term, type, effect, rule: 'T-Var', premises: [], open: true }
 }
 
 export class TypeError2 extends Error {}
@@ -153,13 +162,9 @@ function deriveDedicatedPrim(
     if (fn.kind === 'prim' && (fn.name === 'neg' || fn.name === 'add1')) {
         const primType = BUILTIN_TYPES[fn.name]
         if (primType.kind !== 'arrow') return null
-        const argNode = deriveNode(ctx, arg, opts)
+        let argNode = deriveNode(ctx, arg, opts)
         const domain = primType.from
-        if (!typesEqual(argNode.type, domain)) {
-            throw new TypeError2(
-                `argument has type ${typeToString(argNode.type)}, expected ${typeToString(domain)}`
-            )
-        }
+        if (!typesEqual(argNode.type, domain)) argNode = openLeaf(ctx, arg, domain)
         const effect = argNode.effect === argNode.type ? domain : argNode.effect
         return {
             ctx,
@@ -172,12 +177,9 @@ function deriveDedicatedPrim(
     }
     if (fn.kind === 'app' && fn.fn.kind === 'prim' && fn.fn.name === 'eq') {
         const e1Node = deriveNode(ctx, fn.arg, opts)
-        const e2Node = deriveNode(ctx, arg, opts)
-        if (!typesEqual(e1Node.type, e2Node.type)) {
-            throw new TypeError2(
-                `eq operands have different types: ${typeToString(e1Node.type)} vs ${typeToString(e2Node.type)}`
-            )
-        }
+        let e2Node = deriveNode(ctx, arg, opts)
+        if (!typesEqual(e1Node.type, e2Node.type))
+            e2Node = openLeaf(ctx, arg, e1Node.type)
         const anchor = unifyTypes(e1Node.type, e2Node.type)
         const e1Effect = e1Node.effect === e1Node.type ? anchor : e1Node.effect
         const e2Effect = e2Node.effect === e2Node.type ? anchor : e2Node.effect
@@ -249,14 +251,11 @@ function deriveNode(ctx: Ctx, term: Term, opts: ParseOptions): ProofNode {
                     `applying non-function of type ${typeToString(fnNode.type)}`
                 )
             }
-            const argNode = deriveNode(ctx, term.arg, opts)
+            let argNode = deriveNode(ctx, term.arg, opts)
             const isPoly =
                 fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
-            if (!isPoly && !typesEqual(argNode.type, fnNode.type.from)) {
-                throw new TypeError2(
-                    `argument has type ${typeToString(argNode.type)}, expected ${typeToString(fnNode.type.from)}`
-                )
-            }
+            if (!isPoly && !typesEqual(argNode.type, fnNode.type.from))
+                argNode = openLeaf(ctx, term.arg, fnNode.type.from)
             const type = isPoly ? substType(fnNode.type.to, argNode.type) : fnNode.type.to
             // An argument that's a bare (or propagated) `op` carries its own
             // still-open marker as both its type and effect; once it's been
@@ -274,12 +273,14 @@ function deriveNode(ctx: Ctx, term: Term, opts: ParseOptions): ProofNode {
         }
         case 'try': {
             const bodyNode = deriveNode(ctx, term.body, opts)
-            const handlerNode = deriveNode(ctx, term.handler, opts)
-            if (!typesEqual(bodyNode.type, handlerNode.type)) {
-                throw new TypeError2(
-                    `try branches disagree: ${typeToString(bodyNode.type)} vs ${typeToString(handlerNode.type)}`
+            let handlerNode = deriveNode(ctx, term.handler, opts)
+            if (!typesEqual(bodyNode.type, handlerNode.type))
+                handlerNode = openLeaf(
+                    ctx,
+                    term.handler,
+                    bodyNode.type,
+                    handlerNode.effect
                 )
-            }
             const type = unifyTypes(bodyNode.type, handlerNode.type)
             const effect = tryEffect(bodyNode.effect, handlerNode.effect)
             return {
@@ -312,16 +313,13 @@ function deriveNode(ctx: Ctx, term: Term, opts: ParseOptions): ProofNode {
                 to: erNode.type,
                 effect: erNode.effect
             }
-            const eoNode = deriveNode([...ctx, [term.k, kType]], term.eo, opts)
-            if (!typesEqual(eoNode.type, erNode.type)) {
-                throw new TypeError2(
-                    `handle clauses disagree: ${typeToString(erNode.type)} vs ${typeToString(eoNode.type)}`
-                )
-            }
-            if (!effectsEqual(eoNode.effect, erNode.effect)) {
-                throw new TypeError2(
-                    `handle clauses disagree: !${effectToString(erNode.effect)} vs !${effectToString(eoNode.effect)}`
-                )
+            const eoCtx: Ctx = [...ctx, [term.k, kType]]
+            let eoNode = deriveNode(eoCtx, term.eo, opts)
+            if (
+                !typesEqual(eoNode.type, erNode.type) ||
+                !effectsEqual(eoNode.effect, erNode.effect)
+            ) {
+                eoNode = openLeaf(eoCtx, term.eo, erNode.type, erNode.effect)
             }
             return {
                 ctx,

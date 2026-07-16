@@ -101,7 +101,23 @@ export const PRESETS = [
         effects: true
     },
     {
-        name: 'Effects: Mismatched Continuation',
+        name: 'Open Premise: Mismatched Eq',
+        ctx: '',
+        term: 'eq 1 true',
+        primitives: true,
+        exceptions: false,
+        effects: false
+    },
+    {
+        name: 'Open Premise: Mismatched Try Branches',
+        ctx: '',
+        term: 'try 3 with true',
+        primitives: true,
+        exceptions: true,
+        effects: false
+    },
+    {
+        name: 'Open Premise: Mismatched Effects',
         ctx: '',
         term: 'handle (neg op) with {x. x; k. k 2}',
         primitives: true,

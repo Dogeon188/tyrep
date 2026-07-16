@@ -56,10 +56,11 @@ describe('derive', () => {
         expect(boolEq.type).toEqual({ kind: 'base', name: 'Bool' })
     })
 
-    test('eq rejects operands of different types', () => {
-        expect(() =>
-            derive([], parseTermString('eq 1 true', { primitives: true }))
-        ).toThrow(TypeError2)
+    test('eq forces the mismatched operand open instead of failing the whole tree', () => {
+        const node = derive([], parseTermString('eq 1 true', { primitives: true }))
+        expect(node.type).toEqual({ kind: 'base', name: 'Bool' })
+        expect(node.premises[1].open).toBe(true)
+        expect(node.premises[1].type).toEqual({ kind: 'base', name: 'Int' })
     })
 })
 
@@ -86,10 +87,11 @@ describe('derive — dedicated primitive rules (exn.pdf Appendix B)', () => {
         expect(eq.type).toEqual({ kind: 'base', name: 'Bool' })
     })
 
-    test('eq still rejects mismatched operand types', () => {
-        expect(() =>
-            derive([], parseTermString('eq 1 true', { primitives: true }), opts)
-        ).toThrow(TypeError2)
+    test('eq still forces the mismatched operand open via T-Eq', () => {
+        const node = derive([], parseTermString('eq 1 true', { primitives: true }), opts)
+        expect(node.rule).toBe('T-Eq')
+        expect(node.premises[1].open).toBe(true)
+        expect(node.premises[1].type).toEqual({ kind: 'base', name: 'Int' })
     })
 
     test('dedicated and generic modes agree on .type/.effect', () => {
@@ -141,10 +143,12 @@ describe('derive — exceptions (exn.pdf §6/Appendix B)', () => {
         expect(root.effect).toBe('i')
     })
 
-    test('mismatched try branches are a type error', () => {
-        expect(() => derive([], parseTermString('try 3 with true', opts))).toThrow(
-            TypeError2
-        )
+    test('mismatched try branches force the handler open instead of failing', () => {
+        const node = derive([], parseTermString('try 3 with true', opts))
+        expect(node.rule).toBe('T-Try')
+        expect(node.type).toEqual({ kind: 'base', name: 'Int' })
+        expect(node.premises[1].open).toBe(true)
+        expect(node.premises[1].type).toEqual({ kind: 'base', name: 'Int' })
     })
 
     test('"error"/"try"/"with" stay usable as identifiers when exceptions are off', () => {
@@ -199,17 +203,25 @@ describe('derive — algebraic effects (eff.pdf §6)', () => {
         expect(root.effect).toBe('p')
     })
 
-    test('a continuation used at the wrong type is a type error', () => {
+    test('a continuation used at the wrong type forces that argument open', () => {
         // eff.pdf worked example D7: k requires bool, but is applied to the int 2
-        expect(() =>
-            derive([], parseTermString('handle (neg op) with {x. x; k. k 2}', opts))
-        ).toThrow(TypeError2)
+        const node = derive(
+            [],
+            parseTermString('handle (neg op) with {x. x; k. k 2}', opts)
+        )
+        expect(node.rule).toBe('T-Handle')
+        const [, , eoNode] = node.premises
+        expect(eoNode.rule).toBe('T-App')
+        expect(eoNode.premises[1].open).toBe(true)
+        expect(eoNode.premises[1].type).toEqual({ kind: 'base', name: 'Bool' })
     })
 
-    test('mismatched handler-clause types are a type error', () => {
-        expect(() =>
-            derive([], parseTermString('handle 5 with {x. x; k. false}', opts))
-        ).toThrow(TypeError2)
+    test('mismatched handler-clause types force the operation clause open', () => {
+        const node = derive([], parseTermString('handle 5 with {x. x; k. false}', opts))
+        expect(node.rule).toBe('T-Handle')
+        const [, erNode, eoNode] = node.premises
+        expect(eoNode.open).toBe(true)
+        expect(eoNode.type).toEqual(erNode.type)
     })
 
     test('"op"/"handle"/"with" stay usable as identifiers when effects are off', () => {

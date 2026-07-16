@@ -618,6 +618,23 @@ function Rule({
         </span>
     )
 
+    if (n.open) {
+        return (
+            <div
+                className={`rule open${active ? ' active' : ''}${
+                    isMergedEnvRoot
+                        ? ` compact-env${envVisible ? ' env-visible' : ''}`
+                        : ''
+                }`}
+                style={envStyle}
+                onMouseLeave={() => setHoveredTerm(null)}
+                title="unjustified premise: asserted, not derived"
+            >
+                <Judgment n={n} labels={labels} />
+            </div>
+        )
+    }
+
     if (n.rule === 'T-Var') {
         return (
             <div
