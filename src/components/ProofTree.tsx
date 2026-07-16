@@ -9,7 +9,7 @@ import type { ProofNode } from '../lambda/typecheck'
 import { RuleDiagram } from './RuleDiagram'
 import { RULES } from '../lambda/rules'
 import { TYVAR } from '../lambda/primitives'
-import type { Ctx, Effect, Term } from '../lambda/types'
+import type { Ctx, Effect, Term, Type } from '../lambda/types'
 import { ctxToString, effectToString, typeToString } from '../lambda/types'
 import './ProofTree.css'
 
@@ -22,6 +22,17 @@ const envColor = (i: number) => `hsl(${(i * 137.508) % 360} 70% 45%)`
 // Same golden-angle spread, phase-shifted a half-turn so shadowed variable
 // badges never land on the same hue as a Γ badge (i and i share a start).
 const varColor = (i: number) => `hsl(${(i * 137.508 + 180) % 360} 70% 45%)`
+
+// Same golden-angle spread again, phase-shifted a third turn so effect
+// composition colors don't collide with env/var hues at the same index.
+const effectColor = (i: number) => `hsl(${(i * 137.508 + 60) % 360} 70% 45%)`
+
+// A node can be the source of both its own top-level effect (rendered right
+// after its type, e.g. "T !ϵ") and, separately, the latent effect embedded
+// inside its own arrow type (e.g. the "!ϵ" inside "A → B !ϵ") — two distinct
+// printed locations, so each gets its own optional color rather than one
+// overwriting the other.
+type EffectHighlight = { own?: string; latent?: string }
 
 // Which badge is currently hovered, so every badge sharing that key (across
 // the tree and the legend) can light up its bounding box. Keyed by
@@ -36,6 +47,8 @@ const HoverCtx = createContext<{
     setHoveredEnv: (i: number | null) => void
     hoveredTerm: Term | null
     setHoveredTerm: (t: Term | null) => void
+    hoveredEffectSources: Map<ProofNode, EffectHighlight> | null
+    setHoveredEffectSources: (m: Map<ProofNode, EffectHighlight> | null) => void
     collapsed: Set<Term>
     toggleCollapse: (t: Term) => void
     compact: boolean
@@ -48,6 +61,8 @@ const HoverCtx = createContext<{
     setHoveredEnv: () => {},
     hoveredTerm: null,
     setHoveredTerm: () => {},
+    hoveredEffectSources: null,
+    setHoveredEffectSources: () => {},
     collapsed: new Set(),
     toggleCollapse: () => {},
     compact: false,
@@ -270,52 +285,140 @@ type Labels = {
     collapseIndices: Map<Term, number>
 }
 
+// A colored operand carries the proof node it came from, so the tooltip
+// entry and its source in the tree can be highlighted with the same color;
+// plain strings are just connective text (" ∘ ", " = ", ...). `kind: 'latent'`
+// marks the one operand (T-App's callee arrow effect) that isn't the
+// source's own top-level effect annotation but the "!ϵ" embedded inside its
+// arrow type — a different printed location, so it needs its own slot.
+type EffectSegment = string | { text: string; source: ProofNode; kind?: 'latent' }
+
 // Mirrors typecheck.ts's T-App effect derivation: fn's own effect, then the
 // argument's (pinned to the callee's declared param type if the argument was
 // still an unresolved `op` marker), then the callee's latent arrow effect —
 // composed left-to-right with `∘`.
-function appEffectFormula(n: ProofNode): string | null {
+function appEffectFormula(n: ProofNode): EffectSegment[] | null {
     const [fnNode, argNode] = n.premises
     if (fnNode.type.kind !== 'arrow') return null
     const isPoly = fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
     const argEffect: Effect =
         !isPoly && argNode.effect === argNode.type ? fnNode.type.from : argNode.effect
-    return (
-        `${effectToString(fnNode.effect)} ∘ ${effectToString(argEffect)} ∘ ` +
-        `${effectToString(fnNode.type.effect)} = ${effectToString(n.effect)}`
-    )
+    return [
+        { text: effectToString(fnNode.effect), source: fnNode },
+        ' ∘ ',
+        { text: effectToString(argEffect), source: argNode },
+        ' ∘ ',
+        // The latent arrow effect lives in fn's own type (printed as the
+        // trailing "!ϵ" of fn's arrow type), not fn's own effect annotation
+        // — same source node, different printed location.
+        { text: effectToString(fnNode.type.effect), source: fnNode, kind: 'latent' },
+        ` = ${effectToString(n.effect)}`
+    ]
 }
 
 // Mirrors tryEffect: the handler only contributes when the body isn't
 // already pure — spell out which branch actually decided the result.
-function tryEffectFormula(n: ProofNode): string {
+function tryEffectFormula(n: ProofNode): EffectSegment[] {
     const [bodyNode, handlerNode] = n.premises
-    return bodyNode.effect === 'p'
-        ? `body is pure ⟹ !${effectToString(n.effect)}`
-        : `body !${effectToString(bodyNode.effect)} ⟹ take handler's ` +
-              `!${effectToString(handlerNode.effect)}`
+    if (bodyNode.effect === 'p') return [`body is pure ⟹ !${effectToString(n.effect)}`]
+    return [
+        'body ',
+        { text: `!${effectToString(bodyNode.effect)}`, source: bodyNode },
+        " ⟹ take handler's ",
+        { text: `!${effectToString(handlerNode.effect)}`, source: handlerNode }
+    ]
 }
 
 // Only T-App (∘) and T-Try (•) genuinely combine two sub-effects into a new
 // one; every other rule's effect is just copied or looked up, not worth a
 // tooltip.
-function effectFormula(n: ProofNode): string | null {
+function effectFormula(n: ProofNode): EffectSegment[] | null {
     if (n.rule === 'T-App') return appEffectFormula(n)
     if (n.rule === 'T-Try') return tryEffectFormula(n)
     return null
 }
 
 function EffectAnnotation({ n }: { n: ProofNode }) {
+    const { hoveredEffectSources, setHoveredEffectSources } = useContext(HoverCtx)
+    const ownColor = hoveredEffectSources?.get(n)?.own
     const formula = effectFormula(n)
+    let colorIndex = 0
+    const sources = new Map<ProofNode, EffectHighlight>()
+    const rendered = formula?.map((seg, i) => {
+        if (typeof seg === 'string') return <span key={i}>{seg}</span>
+        const color = effectColor(colorIndex++)
+        const entry = sources.get(seg.source) ?? {}
+        if (seg.kind === 'latent') entry.latent = color
+        else entry.own = color
+        sources.set(seg.source, entry)
+        return (
+            <span
+                key={i}
+                className="effect-part active"
+                style={{ '--effect-color': color } as CSSProperties}
+            >
+                {seg.text}
+            </span>
+        )
+    })
     return (
         <>
             {' '}
-            !{effectToString(n.effect)}
+            <span
+                className={`effect-part${ownColor ? ' active' : ''}`}
+                style={
+                    ownColor
+                        ? ({ '--effect-color': ownColor } as CSSProperties)
+                        : undefined
+                }
+            >
+                !{effectToString(n.effect)}
+            </span>
             {formula && (
-                <span className="effect-info" tabIndex={0}>
-                    ?<span className="effect-tooltip">{formula}</span>
+                <span
+                    className="effect-info"
+                    tabIndex={0}
+                    onMouseEnter={() => setHoveredEffectSources(sources)}
+                    onMouseLeave={() => setHoveredEffectSources(null)}
+                    onFocus={() => setHoveredEffectSources(sources)}
+                    onBlur={() => setHoveredEffectSources(null)}
+                >
+                    ?<span className="effect-tooltip">{rendered}</span>
                 </span>
             )}
+        </>
+    )
+}
+
+// Colors the trailing "!ϵ" of an arrow type in place. exn.pdf's printing
+// convention (typeToString in types.ts) puts exactly one such latent-effect
+// marker at the very end of the outermost arrow, so there's exactly one
+// spot to target — everything else prints the same as typeToString.
+function typeNode(t: Type, showEffect: boolean, latentColor?: string): ReactNode {
+    if (!showEffect || t.kind !== 'arrow') return typeToString(t, showEffect)
+    const from =
+        t.from.kind === 'arrow'
+            ? `(${typeToString(t.from, showEffect)})`
+            : typeToString(t.from, showEffect)
+    const to =
+        t.to.kind === 'arrow'
+            ? `(${typeToString(t.to, showEffect)})`
+            : typeToString(t.to, showEffect)
+    return (
+        <>
+            {from} → {to}{' '}
+            {/* Always wrapped (border reserved even when inactive) so
+                hovering doesn't change this span's width and shift layout. */}
+            <span
+                className={`effect-part${latentColor ? ' active' : ''}`}
+                style={
+                    latentColor
+                        ? ({ '--effect-color': latentColor } as CSSProperties)
+                        : undefined
+                }
+            >
+                !{effectToString(t.effect)}
+            </span>
         </>
     )
 }
@@ -342,7 +445,7 @@ function RuleName({
 }
 
 function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
-    const { compact, exceptions, effects } = useContext(HoverCtx)
+    const { compact, exceptions, effects, hoveredEffectSources } = useContext(HoverCtx)
     const showEffects = exceptions || effects
     return (
         <span className="judgment">
@@ -354,7 +457,7 @@ function Judgment({ n, labels }: { n: ProofNode; labels: Labels }) {
             )}
             {termNode(n.term, n.ctx, labels.binders)}{' '}
             <span className="judgment-separator">:</span>{' '}
-            {typeToString(n.type, showEffects)}
+            {typeNode(n.type, showEffects, hoveredEffectSources?.get(n)?.latent)}
             {showEffects && <EffectAnnotation n={n} />}
         </span>
     )
@@ -373,6 +476,7 @@ function Rule({
         hoveredTerm,
         hoveredEnv,
         setHoveredTerm,
+        hoveredEffectSources,
         collapsed,
         toggleCollapse,
         compact,
@@ -406,7 +510,7 @@ function Rule({
                     onClick={() => toggleCollapse(n.term)}
                 >
                     D{subscript(idx)} ⊢ {termNode(n.term, n.ctx, labels.binders)} :{' '}
-                    {typeToString(n.type, showEffects)}
+                    {typeNode(n.type, showEffects, hoveredEffectSources?.get(n)?.latent)}
                     {showEffects && <EffectAnnotation n={n} />}
                 </span>
             </div>
@@ -438,7 +542,11 @@ function Rule({
                     <span className="judgment">
                         {termNode(n.term, n.ctx, labels.binders)}{' '}
                         <span className="judgment-separator">:</span>{' '}
-                        {typeToString(n.type, showEffects)}
+                        {typeNode(
+                            n.type,
+                            showEffects,
+                            hoveredEffectSources?.get(n)?.latent
+                        )}
                         {showEffects && <EffectAnnotation n={n} />}
                         {!compact && <> ∈ {envNode(n.ctx, labels.envs)}</>}
                     </span>
@@ -496,6 +604,10 @@ export function ProofTree({
     const [hovered, setHovered] = useState<string | null>(null)
     const [hoveredEnv, setHoveredEnv] = useState<number | null>(null)
     const [hoveredTerm, setHoveredTerm] = useState<Term | null>(null)
+    const [hoveredEffectSources, setHoveredEffectSources] = useState<Map<
+        ProofNode,
+        EffectHighlight
+    > | null>(null)
     const [collapsed, setCollapsed] = useState<Set<Term>>(new Set())
     const [copied, setCopied] = useState(false)
     const toggleCollapse = (t: Term) =>
@@ -527,6 +639,8 @@ export function ProofTree({
                 setHoveredEnv,
                 hoveredTerm,
                 setHoveredTerm,
+                hoveredEffectSources,
+                setHoveredEffectSources,
                 collapsed,
                 toggleCollapse,
                 compact,

@@ -246,6 +246,24 @@
     cursor: help;
 }
 
+.effect-part {
+    display: inline-block;
+    border: 1px solid transparent;
+    border-radius: var(--radius-small);
+    padding: 0 0.3em;
+    background: transparent;
+    transition:
+        color 0.1s,
+        border-color 0.1s,
+        background 0.1s;
+}
+
+.effect-part.active {
+    color: var(--effect-color);
+    border-color: var(--effect-color);
+    background: color-mix(in srgb, var(--effect-color) 15%, transparent);
+}
+
 .effect-tooltip {
     display: none;
     position: absolute;
