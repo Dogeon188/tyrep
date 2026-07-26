@@ -324,41 +324,52 @@ function deriveNode(
                         effect: 'p'
                     }
                     unifyType(resolvedFnType, inferredFnType, subst)
-                    resolvedFnType = resolveType(inferredFnType, subst)
+                    const resolvedInferredFnType = resolveType(inferredFnType, subst)
+                    if (resolvedInferredFnType.kind !== 'arrow') {
+                        throw new TypeError2(
+                            `applying non-function of type ${typeToString(fnNode.type)}`
+                        )
+                    }
                     return {
                         ctx: applySubstToCtx(ctx, subst),
                         term,
-                        type: resolveType(resolvedFnType.to, subst),
+                        type: resolveType(resolvedInferredFnType.to, subst),
                         effect: seqEffect(
                             seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argNode.effect, subst)),
                             inferredFnType.effect
                         ),
                         rule: 'T-App',
-                        premises: [{ ...fnNode, type: resolvedFnType, effect: 'p' }, argNode]
+                        premises: [{ ...fnNode, type: resolvedInferredFnType, effect: 'p' }, argNode]
                     }
                 }
                 throw new TypeError2(
                     `applying non-function of type ${typeToString(fnNode.type)}`
                 )
             }
+            if (resolvedFnType.kind !== 'arrow') {
+                throw new TypeError2(
+                    `applying non-function of type ${typeToString(fnNode.type)}`
+                )
+            }
+            const arrowFnType = resolvedFnType
             const isPoly =
-                resolvedFnType.from.kind === 'base' && resolvedFnType.from.name === TYVAR
-            if (!isPoly && !typesEqual(resolveType(argNode.type, subst), resolveType(resolvedFnType.from, subst)))
-                argNode = openLeaf(ctx, term.arg, resolvedFnType.from)
+                arrowFnType.from.kind === 'base' && arrowFnType.from.name === TYVAR
+            if (!isPoly && !typesEqual(resolveType(argNode.type, subst), resolveType(arrowFnType.from, subst)))
+                argNode = openLeaf(ctx, term.arg, arrowFnType.from)
             const type = isPoly
-                ? substType(resolveType(resolvedFnType.to, subst), resolveType(argNode.type, subst))
-                : resolveType(resolvedFnType.to, subst)
+                ? substType(resolveType(arrowFnType.to, subst), resolveType(argNode.type, subst))
+                : resolveType(arrowFnType.to, subst)
             // An argument that's a bare (or propagated) `op` carries its own
             // still-open marker as both its type and effect; once it's been
             // checked against the callee's declared parameter type above,
             // pin the marker to that concrete type instead of leaving it open.
             const argEffect =
                 !isPoly && argNode.effect === argNode.type
-                    ? resolvedFnType.from
+                    ? arrowFnType.from
                     : argNode.effect
             const effect = seqEffect(
                 seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argEffect, subst)),
-                resolveEffect(resolvedFnType.effect, subst)
+                resolveEffect(arrowFnType.effect, subst)
             )
             return {
                 ctx: applySubstToCtx(ctx, subst),

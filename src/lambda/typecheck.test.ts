@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { parseCtxString, parseTermString } from './parser'
-import { derive, TypeError2 } from './typecheck'
+import { derive } from './typecheck'
 
 describe('derive', () => {
     test('Γ-inferred param type reuses the outer binding instead of duplicating it', () => {
@@ -19,20 +19,19 @@ describe('derive', () => {
     })
 
     test('unannotated param with no matching Γ binding is a type error', () => {
-        // expect(() => derive([], parseTermString('λx. x'))).toThrow(TypeError2)
         const root = derive([], parseTermString('λx. x'))
-        expect(root.type.kind).toBe('arrow')
-        expect(root.type.from.kind).toBe('base')
+        if (root.type.kind !== 'arrow') throw new Error('expected arrow type')
+        if (root.type.from.kind !== 'base') throw new Error('expected base type')
         expect(root.type.from.name).toMatch(/^τ\d+$/)
     })
 
     test('unannotated parameters can be solved from repeated applications', () => {
         const root = derive([], parseTermString('λx. λy:b. x y y'))
-        expect(root.type.kind).toBe('arrow')
+        if (root.type.kind !== 'arrow') throw new Error('expected arrow type')
         const xBinding = root.premises[0].ctx.find(([name]) => name === 'x')?.[1]
-        expect(xBinding?.kind).toBe('arrow')
-        expect(xBinding?.from).toEqual({ kind: 'base', name: 'b' })
-        expect(xBinding?.to.kind).toBe('arrow')
+        if (!xBinding || xBinding.kind !== 'arrow') throw new Error('expected arrow binding')
+        expect(xBinding.from).toEqual({ kind: 'base', name: 'b' })
+        expect(xBinding.to.kind).toBe('arrow')
     })
 
 
