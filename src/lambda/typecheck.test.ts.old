@@ -19,22 +19,8 @@ describe('derive', () => {
     })
 
     test('unannotated param with no matching Γ binding is a type error', () => {
-        // expect(() => derive([], parseTermString('λx. x'))).toThrow(TypeError2)
-        const root = derive([], parseTermString('λx. x'))
-        expect(root.type.kind).toBe('arrow')
-        expect(root.type.from.kind).toBe('base')
-        expect(root.type.from.name).toMatch(/^τ\d+$/)
+        expect(() => derive([], parseTermString('λx. x'))).toThrow(TypeError2)
     })
-
-    test('unannotated parameters can be solved from repeated applications', () => {
-        const root = derive([], parseTermString('λx. λy:b. x y y'))
-        expect(root.type.kind).toBe('arrow')
-        const xBinding = root.premises[0].ctx.find(([name]) => name === 'x')?.[1]
-        expect(xBinding?.kind).toBe('arrow')
-        expect(xBinding?.from).toEqual({ kind: 'base', name: 'b' })
-        expect(xBinding?.to.kind).toBe('arrow')
-    })
-
 
     test('Int/Bool primitives type as base Int/Bool when enabled', () => {
         const n = derive([], parseTermString('42', { primitives: true }))

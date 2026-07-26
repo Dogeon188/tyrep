@@ -15,42 +15,6 @@ function substType(t: Type, replacement: Type): Type {
     }
 }
 
-function resolveEffect(e: Effect, subst: Map<string, Type>): Effect {
-    return typeof e === 'string' ? e : resolveType(e, subst)
-}
-
-function resolveType(t: Type, subst: Map<string, Type>): Type {
-    if (t.kind === 'base') {
-        const replacement = subst.get(t.name)
-        return replacement ? resolveType(replacement, subst) : t
-    }
-    return {
-        kind: 'arrow',
-        from: resolveType(t.from, subst),
-        to: resolveType(t.to, subst),
-        effect: resolveEffect(t.effect, subst)
-    }
-}
-
-function unifyType(a: Type, b: Type, subst: Map<string, Type>): Type {
-    const left = resolveType(a, subst)
-    const right = resolveType(b, subst)
-    if (left.kind === 'base' && isFreshTypeVar(left)) {
-        subst.set(left.name, right)
-        return right
-    }
-    if (right.kind === 'base' && isFreshTypeVar(right)) {
-        subst.set(right.name, left)
-        return left
-    }
-    if (left.kind === 'arrow' && right.kind === 'arrow') {
-        unifyType(left.from, right.from, subst)
-        unifyType(left.to, right.to, subst)
-        return left
-    }
-    return left
-}
-
 // Effect composition from exn.pdf Appendix B: `∘` (sequencing — impure if
 // either side is) determines T-App's effect from callee/arg/body; `•`
 // (try-merge) determines T-Try's effect from its two branches. Generalized
@@ -119,20 +83,7 @@ function lookup(ctx: Ctx, name: string): Type | undefined {
     return undefined
 }
 
-function applySubstToCtx(ctx: Ctx, subst: Map<string, Type>): Ctx {
-    return ctx.map(([name, t]) => [name, resolveType(t, subst)])
-}
-
 const subscript = (n: number) => String(n).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])
-
-let freshTypeVarId = 0
-function freshTypeVar(): Type {
-    return { kind: 'base', name: `τ${freshTypeVarId++}` }
-}
-
-function isFreshTypeVar(t: Type): boolean {
-    return t.kind === 'base' && /^τ(?:\d|[₀₁₂₃₄₅₆₇₈₉])+$/.test(t.name)
-}
 
 // Names free in `term` that aren't already bound in `ctx`, in first-appearance
 // (left-to-right) order — mirrors FV(e) from the paper, minus whatever the
@@ -193,7 +144,7 @@ function withFreeVarTypes(ctx: Ctx, term: Term): Ctx {
 
 /** Pure synthesis over T-Var/T-App/T-Abs: context + expression -> result type. */
 export function derive(ctx: Ctx, term: Term, opts: ParseOptions = {}): ProofNode {
-    return deriveNode(withFreeVarTypes(ctx, term), term, opts, new Map<string, Type>())
+    return deriveNode(withFreeVarTypes(ctx, term), term, opts)
 }
 
 // Recognizes `neg e`/`add1 e`/`eq e1 e2` application shapes and derives them
@@ -205,14 +156,13 @@ export function derive(ctx: Ctx, term: Term, opts: ParseOptions = {}): ProofNode
 function deriveDedicatedPrim(
     ctx: Ctx,
     term: Extract<Term, { kind: 'app' }>,
-    opts: ParseOptions,
-    subst: Map<string, Type>
+    opts: ParseOptions
 ): ProofNode | null {
     const { fn, arg } = term
     if (fn.kind === 'prim' && (fn.name === 'neg' || fn.name === 'add1')) {
         const primType = BUILTIN_TYPES[fn.name]
         if (primType.kind !== 'arrow') return null
-        let argNode = deriveNode(ctx, arg, opts, subst)
+        let argNode = deriveNode(ctx, arg, opts)
         const domain = primType.from
         if (!typesEqual(argNode.type, domain)) argNode = openLeaf(ctx, arg, domain)
         const effect = argNode.effect === argNode.type ? domain : argNode.effect
@@ -226,8 +176,8 @@ function deriveDedicatedPrim(
         }
     }
     if (fn.kind === 'app' && fn.fn.kind === 'prim' && fn.fn.name === 'eq') {
-        const e1Node = deriveNode(ctx, fn.arg, opts, subst)
-        let e2Node = deriveNode(ctx, arg, opts, subst)
+        const e1Node = deriveNode(ctx, fn.arg, opts)
+        let e2Node = deriveNode(ctx, arg, opts)
         if (!typesEqual(e1Node.type, e2Node.type))
             e2Node = openLeaf(ctx, arg, e1Node.type)
         const anchor = unifyTypes(e1Node.type, e2Node.type)
@@ -245,12 +195,7 @@ function deriveDedicatedPrim(
     return null
 }
 
-function deriveNode(
-    ctx: Ctx,
-    term: Term,
-    opts: ParseOptions,
-    subst: Map<string, Type>
-): ProofNode {
+function deriveNode(ctx: Ctx, term: Term, opts: ParseOptions): ProofNode {
     switch (term.kind) {
         case 'lit':
             return {
@@ -293,85 +238,42 @@ function deriveNode(
         case 'var': {
             const type = lookup(ctx, term.name)
             if (!type) throw new TypeError2(`unbound variable "${term.name}"`)
-            return {
-                ctx: applySubstToCtx(ctx, subst),
-                term,
-                type: resolveType(type, subst),
-                effect: 'p',
-                rule: 'T-Var',
-                premises: []
-            }
+            return { ctx, term, type, effect: 'p', rule: 'T-Var', premises: [] }
         }
         case 'app': {
             if (opts.dedicated) {
-                const dedicated = deriveDedicatedPrim(ctx, term, opts, subst)
+                const dedicated = deriveDedicatedPrim(ctx, term, opts)
                 if (dedicated) return dedicated
             }
-            const fnNode = deriveNode(ctx, term.fn, opts, subst)
-            // if (fnNode.type.kind !== 'arrow') {
-            //     throw new TypeError2(
-            //         `applying non-function of type ${typeToString(fnNode.type)}`
-            //     )
-            // }
-            let argNode = deriveNode(ctx, term.arg, opts, subst)
-            let resolvedFnType = resolveType(fnNode.type, subst)
-            if (resolvedFnType.kind !== 'arrow') {
-                if (isFreshTypeVar(resolvedFnType)) {
-                    const inferredFnType: Type = {
-                        kind: 'arrow',
-                        from: resolveType(argNode.type, subst),
-                        to: freshTypeVar(),
-                        effect: 'p'
-                    }
-                    unifyType(resolvedFnType, inferredFnType, subst)
-                    resolvedFnType = resolveType(inferredFnType, subst)
-                    return {
-                        ctx: applySubstToCtx(ctx, subst),
-                        term,
-                        type: resolveType(resolvedFnType.to, subst),
-                        effect: seqEffect(
-                            seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argNode.effect, subst)),
-                            inferredFnType.effect
-                        ),
-                        rule: 'T-App',
-                        premises: [{ ...fnNode, type: resolvedFnType, effect: 'p' }, argNode]
-                    }
-                }
+            const fnNode = deriveNode(ctx, term.fn, opts)
+            if (fnNode.type.kind !== 'arrow') {
                 throw new TypeError2(
                     `applying non-function of type ${typeToString(fnNode.type)}`
                 )
             }
+            let argNode = deriveNode(ctx, term.arg, opts)
             const isPoly =
-                resolvedFnType.from.kind === 'base' && resolvedFnType.from.name === TYVAR
-            if (!isPoly && !typesEqual(resolveType(argNode.type, subst), resolveType(resolvedFnType.from, subst)))
-                argNode = openLeaf(ctx, term.arg, resolvedFnType.from)
-            const type = isPoly
-                ? substType(resolveType(resolvedFnType.to, subst), resolveType(argNode.type, subst))
-                : resolveType(resolvedFnType.to, subst)
+                fnNode.type.from.kind === 'base' && fnNode.type.from.name === TYVAR
+            if (!isPoly && !typesEqual(argNode.type, fnNode.type.from))
+                argNode = openLeaf(ctx, term.arg, fnNode.type.from)
+            const type = isPoly ? substType(fnNode.type.to, argNode.type) : fnNode.type.to
             // An argument that's a bare (or propagated) `op` carries its own
             // still-open marker as both its type and effect; once it's been
             // checked against the callee's declared parameter type above,
             // pin the marker to that concrete type instead of leaving it open.
             const argEffect =
                 !isPoly && argNode.effect === argNode.type
-                    ? resolvedFnType.from
+                    ? fnNode.type.from
                     : argNode.effect
             const effect = seqEffect(
-                seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argEffect, subst)),
-                resolveEffect(resolvedFnType.effect, subst)
+                seqEffect(fnNode.effect, argEffect),
+                fnNode.type.effect
             )
-            return {
-                ctx: applySubstToCtx(ctx, subst),
-                term,
-                type,
-                effect,
-                rule: 'T-App',
-                premises: [fnNode, argNode]
-            }
+            return { ctx, term, type, effect, rule: 'T-App', premises: [fnNode, argNode] }
         }
         case 'try': {
-            const bodyNode = deriveNode(ctx, term.body, opts, subst)
-            let handlerNode = deriveNode(ctx, term.handler, opts, subst)
+            const bodyNode = deriveNode(ctx, term.body, opts)
+            let handlerNode = deriveNode(ctx, term.handler, opts)
             if (!typesEqual(bodyNode.type, handlerNode.type))
                 handlerNode = openLeaf(
                     ctx,
@@ -382,7 +284,7 @@ function deriveNode(
             const type = unifyTypes(bodyNode.type, handlerNode.type)
             const effect = tryEffect(bodyNode.effect, handlerNode.effect)
             return {
-                ctx: applySubstToCtx(ctx, subst),
+                ctx,
                 term,
                 type,
                 effect,
@@ -393,7 +295,7 @@ function deriveNode(
         case 'handle': {
             // T-Handle (eff.pdf §6): Γ⊢e:σ!τ' · Γ,x:σ⊢er:τ!ϵ · Γ,k:τ'→τ!ϵ⊢eo:τ!ϵ
             //   ⟹ Γ⊢handle e with {x.er;k.eo} : τ!ϵ
-            const bodyNode = deriveNode(ctx, term.body, opts, subst)
+            const bodyNode = deriveNode(ctx, term.body, opts)
             // τ': the type an escaping `op` inside the body expects from its
             // continuation. If the body is genuinely pure (no escaping op —
             // its effect is a plain 'p'/'i' string, not our Type-valued
@@ -404,12 +306,7 @@ function deriveNode(
                 typeof bodyNode.effect === 'string'
                     ? { kind: 'base', name: BOTTOM }
                     : bodyNode.effect
-            const erNode = deriveNode(
-                [...ctx, [term.x, bodyNode.type]],
-                term.er,
-                opts,
-                subst
-            )
+            const erNode = deriveNode([...ctx, [term.x, bodyNode.type]], term.er, opts)
             const kType: Type = {
                 kind: 'arrow',
                 from: tauPrime,
@@ -417,7 +314,7 @@ function deriveNode(
                 effect: erNode.effect
             }
             const eoCtx: Ctx = [...ctx, [term.k, kType]]
-            let eoNode = deriveNode(eoCtx, term.eo, opts, subst)
+            let eoNode = deriveNode(eoCtx, term.eo, opts)
             if (
                 !typesEqual(eoNode.type, erNode.type) ||
                 !effectsEqual(eoNode.effect, erNode.effect)
@@ -425,7 +322,7 @@ function deriveNode(
                 eoNode = openLeaf(eoCtx, term.eo, erNode.type, erNode.effect)
             }
             return {
-                ctx: applySubstToCtx(ctx, subst),
+                ctx,
                 term,
                 type: unifyTypes(erNode.type, eoNode.type),
                 effect: unifyEffect(eoNode.effect, erNode.effect),
@@ -435,27 +332,24 @@ function deriveNode(
         }
         case 'abs': {
             // ponytail: fall back to a same-name Γ binding instead of forcing inline annotation everywhere
-            // const paramType = term.paramType ?? lookup(ctx, term.param)
-            // if (!paramType) {
-            //     throw new TypeError2(
-            //         `cannot infer type of "${term.param}" — annotate it as "λ${term.param}:T. ..." or add "${term.param} : T" to Γ`
-            //     )
-            // }
-            const paramType = term.paramType ?? lookup(ctx, term.param) ?? freshTypeVar()
+            const paramType = term.paramType ?? lookup(ctx, term.param)
+            if (!paramType) {
+                throw new TypeError2(
+                    `cannot infer type of "${term.param}" — annotate it as "λ${term.param}:T. ..." or add "${term.param} : T" to Γ`
+                )
+            }
             // Reusing the same Γ binding (no explicit annotation) shouldn't duplicate
             // it in the body's context — that just prints "x : T, x : T" in the legend.
-            const bodyCtx: Ctx = term.paramType || lookup(ctx, term.param) === undefined
-                ? [...ctx, [term.param, paramType]]
-                : ctx
-            const bodyNode = deriveNode(bodyCtx, term.body, opts, subst)
+            const bodyCtx: Ctx = term.paramType ? [...ctx, [term.param, paramType]] : ctx
+            const bodyNode = deriveNode(bodyCtx, term.body, opts)
             return {
-                ctx: applySubstToCtx(ctx, subst),
+                ctx,
                 term,
                 type: {
                     kind: 'arrow',
-                    from: resolveType(paramType, subst),
-                    to: resolveType(bodyNode.type, subst),
-                    effect: resolveEffect(bodyNode.effect, subst)
+                    from: paramType,
+                    to: bodyNode.type,
+                    effect: bodyNode.effect
                 },
                 effect: 'p',
                 rule: 'T-Abs',
