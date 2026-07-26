@@ -111,6 +111,16 @@ function App() {
                             ))}
                         </select>
                     </span>
+                    <button
+                        type="button"
+                        className="clear-button"
+                        onClick={() => {
+                            setCtxSrc('')
+                            setTermSrc('')
+                        }}
+                    >
+                        Clear
+                    </button>
                 </div>
                 <div className="preset-row">
                     <button
