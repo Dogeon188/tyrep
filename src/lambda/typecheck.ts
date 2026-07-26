@@ -193,6 +193,7 @@ function withFreeVarTypes(ctx: Ctx, term: Term): Ctx {
 
 /** Pure synthesis over T-Var/T-App/T-Abs: context + expression -> result type. */
 export function derive(ctx: Ctx, term: Term, opts: ParseOptions = {}): ProofNode {
+    freshTypeVarId = 0
     return deriveNode(withFreeVarTypes(ctx, term), term, opts, new Map<string, Type>())
 }
 
