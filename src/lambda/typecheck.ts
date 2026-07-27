@@ -1,7 +1,7 @@
 import type { ParseOptions } from './parser'
 import { BOOL, BOTTOM, BUILTIN_TYPES, TYVAR } from './primitives'
 import type { Ctx, Effect, Term, Type } from './types'
-import { typesEqual, typeToString, unifyTypes } from './types'
+import { effectToString, typesEqual, typeToString, unifyTypes } from './types'
 
 // Replaces eq's placeholder type-variable with the concrete type it was
 // applied to (only substitution this toy type system needs).
@@ -32,23 +32,50 @@ function resolveType(t: Type, subst: Map<string, Type>): Type {
     }
 }
 
+// Robinson (1965): a type variable can't be bound to a term containing
+// itself, or resolveType would chase the substitution forever (this is
+// exactly what used to stack-overflow on `λx. x x`).
+function occursIn(name: string, t: Type, subst: Map<string, Type>): boolean {
+    const resolved = resolveType(t, subst)
+    return resolved.kind === 'base'
+        ? resolved.name === name
+        : occursIn(name, resolved.from, subst) || occursIn(name, resolved.to, subst)
+}
+
+function bindTypeVar(name: string, t: Type, subst: Map<string, Type>): Type {
+    if (occursIn(name, t, subst))
+        throw new TypeError2(`infinite type: ${name} occurs in ${typeToString(t)}`)
+    subst.set(name, t)
+    return t
+}
+
+// Robinson's unification algorithm: symmetric recursive descent over term
+// structure, with an occurs check on variable binding and an explicit
+// failure (rather than a silent `return left`) when no unifier exists.
 function unifyType(a: Type, b: Type, subst: Map<string, Type>): Type {
     const left = resolveType(a, subst)
     const right = resolveType(b, subst)
-    if (left.kind === 'base' && isFreshTypeVar(left)) {
-        subst.set(left.name, right)
-        return right
-    }
-    if (right.kind === 'base' && isFreshTypeVar(right)) {
-        subst.set(right.name, left)
+    if (left.kind === 'base' && isFreshTypeVar(left))
+        return bindTypeVar(left.name, right, subst)
+    if (right.kind === 'base' && isFreshTypeVar(right))
+        return bindTypeVar(right.name, left, subst)
+    if (left.kind === 'base' && right.kind === 'base') {
+        if (left.name !== right.name)
+            throw new TypeError2(
+                `cannot unify ${typeToString(left)} with ${typeToString(right)}`
+            )
         return left
     }
     if (left.kind === 'arrow' && right.kind === 'arrow') {
-        unifyType(left.from, right.from, subst)
-        unifyType(left.to, right.to, subst)
-        return left
+        const from = unifyType(left.from, right.from, subst)
+        const to = unifyType(left.to, right.to, subst)
+        if (!effectsEqual(left.effect, right.effect))
+            throw new TypeError2(
+                `cannot unify effects !${effectToString(left.effect)} and !${effectToString(right.effect)}`
+            )
+        return { kind: 'arrow', from, to, effect: left.effect }
     }
-    return left
+    throw new TypeError2(`cannot unify ${typeToString(left)} with ${typeToString(right)}`)
 }
 
 // Effect composition from exn.pdf Appendix B: `∘` (sequencing — impure if
@@ -336,11 +363,17 @@ function deriveNode(
                         term,
                         type: resolveType(resolvedInferredFnType.to, subst),
                         effect: seqEffect(
-                            seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argNode.effect, subst)),
+                            seqEffect(
+                                resolveEffect(fnNode.effect, subst),
+                                resolveEffect(argNode.effect, subst)
+                            ),
                             inferredFnType.effect
                         ),
                         rule: 'T-App',
-                        premises: [{ ...fnNode, type: resolvedInferredFnType, effect: 'p' }, argNode]
+                        premises: [
+                            { ...fnNode, type: resolvedInferredFnType, effect: 'p' },
+                            argNode
+                        ]
                     }
                 }
                 throw new TypeError2(
@@ -355,10 +388,19 @@ function deriveNode(
             const arrowFnType = resolvedFnType
             const isPoly =
                 arrowFnType.from.kind === 'base' && arrowFnType.from.name === TYVAR
-            if (!isPoly && !typesEqual(resolveType(argNode.type, subst), resolveType(arrowFnType.from, subst)))
+            if (
+                !isPoly &&
+                !typesEqual(
+                    resolveType(argNode.type, subst),
+                    resolveType(arrowFnType.from, subst)
+                )
+            )
                 argNode = openLeaf(ctx, term.arg, arrowFnType.from)
             const type = isPoly
-                ? substType(resolveType(arrowFnType.to, subst), resolveType(argNode.type, subst))
+                ? substType(
+                      resolveType(arrowFnType.to, subst),
+                      resolveType(argNode.type, subst)
+                  )
                 : resolveType(arrowFnType.to, subst)
             // An argument that's a bare (or propagated) `op` carries its own
             // still-open marker as both its type and effect; once it's been
@@ -369,7 +411,10 @@ function deriveNode(
                     ? arrowFnType.from
                     : argNode.effect
             const effect = seqEffect(
-                seqEffect(resolveEffect(fnNode.effect, subst), resolveEffect(argEffect, subst)),
+                seqEffect(
+                    resolveEffect(fnNode.effect, subst),
+                    resolveEffect(argEffect, subst)
+                ),
                 resolveEffect(arrowFnType.effect, subst)
             )
             return {
@@ -456,9 +501,10 @@ function deriveNode(
             const paramType = term.paramType ?? lookup(ctx, term.param) ?? freshTypeVar()
             // Reusing the same Γ binding (no explicit annotation) shouldn't duplicate
             // it in the body's context — that just prints "x : T, x : T" in the legend.
-            const bodyCtx: Ctx = term.paramType || lookup(ctx, term.param) === undefined
-                ? [...ctx, [term.param, paramType]]
-                : ctx
+            const bodyCtx: Ctx =
+                term.paramType || lookup(ctx, term.param) === undefined
+                    ? [...ctx, [term.param, paramType]]
+                    : ctx
             const bodyNode = deriveNode(bodyCtx, term.body, opts, subst)
             return {
                 ctx: applySubstToCtx(ctx, subst),

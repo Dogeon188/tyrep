@@ -131,5 +131,21 @@ export const PRESETS = [
         primitives: true,
         exceptions: true,
         effects: true
+    },
+    {
+        name: 'Problem: Self-Application',
+        ctx: '',
+        term: 'λx. x x',
+        primitives: false,
+        exceptions: false,
+        effects: false
+    },
+    {
+        name: 'Problem: Inconsistent Poly Use',
+        ctx: '',
+        term: 'λf. eq (f 1) (f true)',
+        primitives: true,
+        exceptions: false,
+        effects: false
     }
 ]

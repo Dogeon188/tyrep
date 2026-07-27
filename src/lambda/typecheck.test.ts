@@ -29,11 +29,11 @@ describe('derive', () => {
         const root = derive([], parseTermString('λx. λy:b. x y y'))
         if (root.type.kind !== 'arrow') throw new Error('expected arrow type')
         const xBinding = root.premises[0].ctx.find(([name]) => name === 'x')?.[1]
-        if (!xBinding || xBinding.kind !== 'arrow') throw new Error('expected arrow binding')
+        if (!xBinding || xBinding.kind !== 'arrow')
+            throw new Error('expected arrow binding')
         expect(xBinding.from).toEqual({ kind: 'base', name: 'b' })
         expect(xBinding.to.kind).toBe('arrow')
     })
-
 
     test('Int/Bool primitives type as base Int/Bool when enabled', () => {
         const n = derive([], parseTermString('42', { primitives: true }))
@@ -74,6 +74,24 @@ describe('derive', () => {
         expect(node.type).toEqual({ kind: 'base', name: 'Bool' })
         expect(node.premises[1].open).toBe(true)
         expect(node.premises[1].type).toEqual({ kind: 'base', name: 'Int' })
+    })
+})
+
+describe('derive — Robinson unification (unifyType)', () => {
+    test('self-application fails the occurs check instead of stack-overflowing', () => {
+        expect(() => derive([], parseTermString('λx. x x'))).toThrow(/infinite type/)
+    })
+
+    test('applying a resolved polymorphic callee to a mismatched type forces it open', () => {
+        const node = derive(
+            [],
+            parseTermString('λf. eq (f 1) (f true)', { primitives: true })
+        )
+        const eqNode = node.premises[0]
+        expect(eqNode.type).toEqual({ kind: 'base', name: 'Bool' })
+        const [, secondCall] = eqNode.premises
+        expect(secondCall.premises[1].open).toBe(true)
+        expect(secondCall.premises[1].type).toEqual({ kind: 'base', name: 'Int' })
     })
 })
 

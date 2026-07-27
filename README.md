@@ -44,3 +44,7 @@ bun cli.ts --term "λx:b -> b -> b. λy:b. x y y" [--ctx "x : T, y : T"] [--late
 
 React 19 + TypeScript + Vite, [calligraph](https://www.npmjs.com/package/calligraph)
 for rendering, Bun for the runtime/CLI/tests. Visual design inspired by [sylph](https://github.com/raphaelsalaja/sylph).
+
+## Citations
+
+- J. A. Robinson, [A Machine-Oriented Logic Based on the Resolution Principle](https://doi.org/10.1145/321250.321253), _Journal of the ACM_, vol. 12, no. 1, pp. 23–41, 1965. — unification algorithm used by the type checker.
