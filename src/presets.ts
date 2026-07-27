@@ -55,7 +55,7 @@ export const PRESETS = [
     {
         name: 'Exceptions: Handled',
         ctx: '',
-        term: 'try ((λx:Int. error) 1) with 2',
+        term: 'try ((λx. error) 1) with 2',
         primitives: true,
         exceptions: true,
         effects: false
@@ -71,7 +71,7 @@ export const PRESETS = [
     {
         name: 'Exceptions: Nested Try',
         ctx: '',
-        term: 'neg (try (eq error 0) with false)',
+        term: 'try (try error with error) with 0',
         primitives: true,
         exceptions: true,
         effects: false
