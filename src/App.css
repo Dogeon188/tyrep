@@ -32,7 +32,9 @@
     gap: 0.5rem;
 }
 
-.primitives-toggle {
+.primitives-toggle,
+.style-toggle,
+.clear-button {
     font-family: inherit;
     font-variant: small-caps;
     font-size: 0.7rem;
@@ -45,7 +47,9 @@
     transition: opacity 0.2s;
 }
 
-.primitives-toggle:hover {
+.primitives-toggle:hover,
+.style-toggle:hover,
+.clear-button:hover {
     opacity: 0.7;
 }
 
@@ -61,22 +65,6 @@
     border-radius: var(--radius-small);
     background: var(--gray-2);
     color: var(--muted);
-}
-
-.clear-button {
-    font-family: inherit;
-    font-size: 0.7rem;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-small);
-    background: var(--gray-2);
-    color: var(--muted);
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.clear-button:hover {
-    opacity: 0.7;
 }
 
 .primitives-toggle[aria-pressed='true'] {
